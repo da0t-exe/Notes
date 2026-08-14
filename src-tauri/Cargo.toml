@@ -1,0 +1,20 @@
+[package]
+name = "notes"
+version = "1.0.0"
+description = "Notes — éditeur Windows style Monospace"
+authors = ["Notes"]
+edition = "2021"
+
+[lib]
+name = "notes_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+encoding_rs = "0.8"
