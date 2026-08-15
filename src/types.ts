@@ -1,7 +1,8 @@
-export type Theme = 'dark' | 'light'
+export type Theme = 'dark' | 'light' | 'system'
 export type NoteKind = 'text' | 'markdown' | 'checklist'
+export type ListType = 'checklist' | 'bulleted' | 'numbered'
 export type LineEnding = 'LF' | 'CRLF' | 'CR'
-export type Screen = 'library' | 'editor' | 'categories' | 'settings'
+export type Screen = 'library' | 'editor' | 'categories' | 'settings' | 'trash' | 'theme'
 
 export type Category = {
   id: string
@@ -32,10 +33,13 @@ export type Note = {
   dirty: boolean
   size: number
   ciphertext?: string
+  images?: string[]
+  listType?: ListType
 }
 
 export type Settings = {
   theme: Theme
+  language: string
   wrap: boolean
   fontSize: number
   pinHash: string | null

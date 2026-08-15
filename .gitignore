@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .netlify
 release
+packaging
+*.pfx
 
 # Editor directories and files
 .vscode/*

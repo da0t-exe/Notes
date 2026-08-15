@@ -10,6 +10,15 @@ export function IconMenu(p: P) {
   )
 }
 
+export function IconPanel(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M10 5v14" />
+    </svg>
+  )
+}
+
 export function IconSort(p: P) {
   return (
     <svg viewBox="0 0 24 24" {...p}>
@@ -160,6 +169,155 @@ export function IconSearch(p: P) {
     <svg viewBox="0 0 24 24" {...p}>
       <circle cx="11" cy="11" r="6" />
       <path d="m20 20-3.5-3.5" />
+    </svg>
+  )
+}
+
+export function IconBold(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M7 5h7a4 4 0 0 1 0 8H7zM7 13h8a4 4 0 0 1 0 8H7z" />
+    </svg>
+  )
+}
+
+export function IconItalic(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M15 5H9M13 19H7M14 5l-4 14" />
+    </svg>
+  )
+}
+
+export function IconStrike(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M5 12h14M16 7a4 4 0 0 0-8 .8M8 17a4 4 0 0 0 8-.8" />
+    </svg>
+  )
+}
+
+export function IconHeading(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M6 5v14M18 5v14M6 12h12" />
+    </svg>
+  )
+}
+
+export function IconQuote(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M7 17c2-3 3-5 3-8H6v5h4M17 17c2-3 3-5 3-8h-4v5h4" />
+    </svg>
+  )
+}
+
+export function IconCode(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="m8 8-4 4 4 4M16 8l4 4-4 4" />
+    </svg>
+  )
+}
+
+export function IconRestore(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5" />
+    </svg>
+  )
+}
+
+export function IconExport(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M12 4v10M8 8l4-4 4 4M5 20h14" />
+    </svg>
+  )
+}
+
+export function IconCopy(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <rect x="8" y="8" width="11" height="13" rx="2" />
+      <path d="M5 16V5a2 2 0 0 1 2-2h9" />
+    </svg>
+  )
+}
+
+export function IconCamera(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M4 8h4l1.5-2h5L16 8h4v11H4z" />
+      <circle cx="12" cy="13" r="3" />
+    </svg>
+  )
+}
+
+export function IconChevron(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  )
+}
+
+export function IconExternal(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <path d="M10 6h8v8M18 6l-9 9M6 8v10h10" />
+    </svg>
+  )
+}
+
+export function IconRadio({ on, ...p }: P & { on?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <circle cx="12" cy="12" r="8" />
+      {on ? <circle cx="12" cy="12" r="4" fill="currentColor" /> : null}
+    </svg>
+  )
+}
+
+export function IconNote(p: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...p}>
+      <rect x="5" y="4" width="14" height="16" rx="2" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
+    </svg>
+  )
+}
+
+export function IconWinMin(p: P) {
+  return (
+    <svg viewBox="0 0 12 12" {...p}>
+      <path d="M2.5 6h7" />
+    </svg>
+  )
+}
+
+export function IconWinMax(p: P) {
+  return (
+    <svg viewBox="0 0 12 12" {...p}>
+      <rect x="2.4" y="2.4" width="7.2" height="7.2" rx="1.4" />
+    </svg>
+  )
+}
+
+export function IconWinRestore(p: P) {
+  return (
+    <svg viewBox="0 0 12 12" {...p}>
+      <path d="M4.4 3.2h4.4v4.4" />
+      <rect x="2.4" y="4.4" width="5.2" height="5.2" rx="1.2" />
+    </svg>
+  )
+}
+
+export function IconWinClose(p: P) {
+  return (
+    <svg viewBox="0 0 12 12" {...p}>
+      <path d="M3.2 3.2l5.6 5.6M8.8 3.2 3.2 8.8" />
     </svg>
   )
 }

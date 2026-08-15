@@ -1,7 +1,7 @@
 {
   "name": "notes",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Notes — native Windows editor with a Monospace look",
   "author": "Notes",
   "type": "module",
@@ -10,6 +10,7 @@
     "app": "tauri dev",
     "build": "tsc -b && vite build",
     "dist": "tauri build",
+    "dist:appinstaller": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pack-appinstaller.ps1",
     "tauri": "tauri",
     "lint": "oxlint",
     "preview": "vite preview"

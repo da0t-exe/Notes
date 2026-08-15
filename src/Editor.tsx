@@ -12,31 +12,50 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { bracketMatching, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
-import type { Note } from './types'
+import type { ListType, Note } from './types'
 import {
   getContent,
   askText,
   addCategory,
-  insertIntoActive,
+  addNoteImage,
   lockNote,
   markDirty,
   notify,
+  prefixActiveLine,
   promptPin,
-  setNoteKind,
   registerView,
+  removeNoteImage,
   setCursor,
+  setListType,
   setNoteContent,
   setNoteTitle,
   toggleNoteCategory,
+  toggleNoteOrList,
   togglePreview,
   unregisterView,
-  useCursor,
   useStore,
+  wrapActive,
 } from './store'
 import { HIGHLIGHT_MAX, PREVIEW_MAX, languageExtension } from './lib/languages'
-import { formatBytes, formatCreated, formatUpdated } from './lib/format'
-import { parseChecklist, renderMarkdown, serializeChecklist } from './lib/markdown'
-import { IconClose, IconGrip, IconImage, IconList, IconLock, IconPlus, IconSliders } from './icons'
+import { formatBytes, formatStamp } from './lib/format'
+import { parseList, renderMarkdown, serializeList } from './lib/markdown'
+import {
+  IconBold,
+  IconCamera,
+  IconClose,
+  IconCode,
+  IconGrip,
+  IconHeading,
+  IconImage,
+  IconItalic,
+  IconList,
+  IconLock,
+  IconNote,
+  IconPlus,
+  IconPreview,
+  IconQuote,
+  IconStrike,
+} from './icons'
 
 const wrapComp = new Compartment()
 const langComp = new Compartment()
@@ -54,8 +73,17 @@ function editorTheme(dark: boolean, fontSize: number) {
       '.cm-content': {
         fontFamily: '"Azeret Mono", ui-monospace, monospace',
         fontWeight: '300',
-        caretColor: dark ? '#fff' : '#111',
-        padding: '8px 16px 48px',
+        color: dark ? '#f0f2f1' : '#111',
+        caretColor: dark ? '#f0f2f1' : '#111',
+        padding: '8px 16px 120px',
+      },
+      '.cm-line': {
+        color: dark ? '#f0f2f1' : '#111',
+      },
+      '.cm-header, .tok-header': {
+        fontFamily: '"NType82 Headline", serif',
+        fontSize: '1.35em',
+        fontWeight: '400',
       },
       '.cm-gutters': {
         backgroundColor: 'transparent',
@@ -97,14 +125,19 @@ export function EditorPane({ note }: { note: Note }) {
   const fontSize = useStore((s) => s.settings.fontSize)
   const preview = useStore((s) => s.preview)
   const diff = useStore((s) => s.diff)
-  const categories = useStore((s) => s.categories)
   const original = useStore((s) => s.originals[note.id] ?? '')
   const content = useStore((s) => s.contents[note.id] ?? '')
-  const cursor = useCursor()
 
   const [tick, setTick] = useState(0)
   const liveTimer = useRef(0)
-  const dark = theme === 'dark'
+  const dark =
+    theme === 'light'
+      ? false
+      : theme === 'dark'
+        ? true
+        : typeof document !== 'undefined'
+          ? document.documentElement.dataset.theme !== 'light'
+          : true
   const large = note.size > HIGHLIGHT_MAX
   const canPreview = note.kind !== 'checklist' && note.size <= PREVIEW_MAX
 
@@ -181,42 +214,7 @@ export function EditorPane({ note }: { note: Note }) {
 
   return (
     <>
-      <input
-        className="note-title"
-        value={note.title}
-        placeholder="Your title..."
-        onChange={(e) => setNoteTitle(note.id, e.target.value)}
-      />
-      <div className="updated">
-        {formatCreated(note.createdAt)}
-        {note.updatedAt !== note.createdAt ? ` · ${formatUpdated(note.updatedAt)}` : ''}
-      </div>
-      <div className="meta-bar">
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            className={`ghost-pill ${note.categoryIds.includes(c.id) ? 'pill active' : ''}`}
-            onClick={() => toggleNoteCategory(note.id, c.id)}
-            type="button"
-          >
-            {c.name}
-            {note.categoryIds.includes(c.id) ? ' ×' : ''}
-          </button>
-        ))}
-        <button
-          className="plus"
-          type="button"
-          title="Add category"
-          onClick={async () => {
-            const name = await askText('New category', 'Category name')
-            if (!name) return
-            const id = addCategory(name)
-            if (id) toggleNoteCategory(note.id, id)
-          }}
-        >
-          <IconPlus width={14} height={14} />
-        </button>
-      </div>
+      <NoteChrome note={note} />
       <div className={`stage ${split ? 'split' : ''}`}>
         <div className="cm-host" ref={host} />
         {preview && canPreview ? (
@@ -240,37 +238,142 @@ export function EditorPane({ note }: { note: Note }) {
           </div>
         ) : null}
       </div>
-      <div className="toolbar">
-        <button className="icon-btn" type="button" title="Checklist item" onClick={() => insertIntoActive('\n- [ ] ')}>
-          <IconList />
-        </button>
-        <button className="icon-btn" type="button" title="Insert image" onClick={() => void insertImage()}>
-          <IconImage />
-        </button>
-        <button className="icon-btn" type="button" title="Markdown preview" onClick={togglePreview}>
-          <IconSliders />
-        </button>
-        <button
-          className="icon-btn"
-          type="button"
-          title="Lock"
-          onClick={async () => {
-            const pin = await promptPin('Lock this note')
-            if (pin) void lockNote(note.id, pin)
-          }}
-        >
-          <IconLock />
-        </button>
-        <span style={{ flex: 1 }} />
-        <span className="status" style={{ border: 0, padding: 0 }}>
-          Ln {cursor.line}, Col {cursor.col}
-        </span>
+      <div className="editor-dock">
+        <div className="md-bar">
+          <button className="icon-btn" type="button" title="Bold" onClick={() => wrapActive('*')}>
+            <IconBold />
+          </button>
+          <button className="icon-btn" type="button" title="Italic" onClick={() => wrapActive('_')}>
+            <IconItalic />
+          </button>
+          <button className="icon-btn" type="button" title="Strikethrough" onClick={() => wrapActive('~')}>
+            <IconStrike />
+          </button>
+          <button className="icon-btn" type="button" title="Heading" onClick={() => prefixActiveLine('# ')}>
+            <IconHeading />
+          </button>
+          <button className="icon-btn" type="button" title="Quote" onClick={() => prefixActiveLine('> ')}>
+            <IconQuote />
+          </button>
+          <button
+            className="icon-btn"
+            type="button"
+            title="Code"
+            onClick={() => {
+              const selected = viewRef.current?.state.sliceDoc(
+                viewRef.current.state.selection.main.from,
+                viewRef.current.state.selection.main.to,
+              )
+              if (selected?.includes('\n')) wrapActive('```\n', '\n```')
+              else wrapActive('`')
+            }}
+          >
+            <IconCode />
+          </button>
+        </div>
+        <div className="editor-dock-actions">
+          <button className={`eye-fab ${preview ? 'on' : ''}`} type="button" title="Preview" onClick={togglePreview}>
+            <IconPreview />
+          </button>
+          <EditorActions note={note} />
+        </div>
       </div>
     </>
   )
 }
 
-async function insertImage() {
+function NoteChrome({ note }: { note: Note }) {
+  const categories = useStore((s) => s.categories)
+  return (
+    <>
+      <input
+        className="note-title"
+        value={note.title}
+        placeholder="Your title..."
+        onChange={(e) => setNoteTitle(note.id, e.target.value)}
+      />
+      <div className="updated">Updated: {formatStamp(note.updatedAt)}</div>
+      <div className="meta-label">Categories</div>
+      <div className="meta-bar">
+        {categories.map((c) => (
+          <button
+            key={c.id}
+            className={`ghost-pill ${note.categoryIds.includes(c.id) ? 'pill active' : ''}`}
+            onClick={() => toggleNoteCategory(note.id, c.id)}
+            type="button"
+          >
+            {c.name}
+          </button>
+        ))}
+        <button
+          className="plus circle"
+          type="button"
+          title="Add category"
+          onClick={async () => {
+            const name = await askText('New category', 'Category name')
+            if (!name) return
+            const id = addCategory(name)
+            if (id) toggleNoteCategory(note.id, id)
+          }}
+        >
+          <IconPlus width={14} height={14} />
+        </button>
+      </div>
+      <NoteImages note={note} />
+    </>
+  )
+}
+
+function NoteImages({ note }: { note: Note }) {
+  const images = note.images ?? []
+  if (!images.length) return null
+  return (
+    <div className="note-images">
+      {images.map((src, i) => (
+        <div className="note-image" key={`${i}-${src.slice(-12)}`}>
+          <img src={src} alt="" />
+          <button className="icon-btn" type="button" title="Remove image" onClick={() => removeNoteImage(note.id, i)}>
+            <IconClose width={14} height={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EditorActions({ note }: { note: Note }) {
+  return (
+    <div className="toolbar">
+      <button className="icon-btn" type="button" title="Camera" onClick={() => void pickNoteImage(note.id)}>
+        <IconCamera />
+      </button>
+      <button className="icon-btn" type="button" title="Add image" onClick={() => void pickNoteImage(note.id)}>
+        <IconImage />
+      </button>
+      <button
+        className="icon-btn"
+        type="button"
+        title={note.kind === 'checklist' ? 'Switch to note' : 'Switch to list'}
+        onClick={() => toggleNoteOrList(note.id)}
+      >
+        {note.kind === 'checklist' ? <IconNote /> : <IconList />}
+      </button>
+      <button
+        className="icon-btn"
+        type="button"
+        title="Lock"
+        onClick={async () => {
+          const pin = await promptPin('Add password')
+          if (pin) void lockNote(note.id, pin)
+        }}
+      >
+        <IconLock />
+      </button>
+    </div>
+  )
+}
+
+async function pickNoteImage(noteId: string) {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
@@ -281,8 +384,7 @@ async function insertImage() {
       notify('Image too large (max 1.5 MB)', 'warn')
       return
     }
-    const data = await fileToDataUrl(file)
-    insertIntoActive(`\n![${file.name}](${data})\n`)
+    addNoteImage(noteId, await fileToDataUrl(file))
   }
   input.click()
 }
@@ -297,51 +399,34 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 function ChecklistNote({ note, content }: { note: Note; content: string }) {
-  const categories = useStore((s) => s.categories)
-  const items = parseChecklist(content)
+  const listType: ListType = note.listType ?? 'checklist'
+  const items = parseList(content, listType)
   const [drag, setDrag] = useState<number | null>(null)
 
   function write(next: { text: string; done: boolean }[]) {
-    setNoteContent(note.id, serializeChecklist(next))
+    setNoteContent(note.id, serializeList(next, listType))
   }
+
+  const types: { id: ListType; label: string }[] = [
+    { id: 'checklist', label: 'Checklist' },
+    { id: 'bulleted', label: 'Bullets' },
+    { id: 'numbered', label: 'Numbered' },
+  ]
 
   return (
     <div className="checklist">
-      <input
-        className="note-title"
-        value={note.title}
-        placeholder="Your title..."
-        onChange={(e) => setNoteTitle(note.id, e.target.value)}
-      />
-      <div className="updated">
-        {formatCreated(note.createdAt)}
-        {note.updatedAt !== note.createdAt ? ` · ${formatUpdated(note.updatedAt)}` : ''}
-      </div>
-      <div className="meta-bar">
-        {categories.map((c) => (
+      <NoteChrome note={note} />
+      <div className="list-types">
+        {types.map((t) => (
           <button
-            key={c.id}
-            className={`ghost-pill ${note.categoryIds.includes(c.id) ? 'pill active' : ''}`}
-            onClick={() => toggleNoteCategory(note.id, c.id)}
+            key={t.id}
+            className={`ghost-pill ${listType === t.id ? 'pill active' : ''}`}
             type="button"
+            onClick={() => setListType(note.id, t.id)}
           >
-            {c.name}
-            {note.categoryIds.includes(c.id) ? ' ×' : ''}
+            {t.label}
           </button>
         ))}
-        <button
-          className="plus"
-          type="button"
-          title="Add category"
-          onClick={async () => {
-            const name = await askText('New category', 'Category name')
-            if (!name) return
-            const id = addCategory(name)
-            if (id) toggleNoteCategory(note.id, id)
-          }}
-        >
-          <IconPlus width={14} height={14} />
-        </button>
       </div>
       {items.map((it, i) => (
         <div
@@ -369,13 +454,19 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
           >
             <IconGrip />
           </button>
-          <button
-            className={`check-box ${it.done ? 'on' : ''}`}
-            type="button"
-            onClick={() => write(items.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))}
-          >
-            {it.done ? '✓' : ''}
-          </button>
+          {listType === 'checklist' ? (
+            <button
+              className={`check-box ${it.done ? 'on' : ''}`}
+              type="button"
+              onClick={() => write(items.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))}
+            >
+              {it.done ? '✓' : ''}
+            </button>
+          ) : listType === 'numbered' ? (
+            <span className="list-index">{i + 1}.</span>
+          ) : (
+            <span className="bullet" />
+          )}
           <input
             type="text"
             value={it.text}
@@ -389,36 +480,7 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
       <button className="add-item" type="button" onClick={() => write([...items, { text: '', done: false }])}>
         Add item
       </button>
-      <div className="toolbar">
-        <button
-          className="icon-btn"
-          type="button"
-          title="Add item"
-          onClick={() => write([...items, { text: '', done: false }])}
-        >
-          <IconList />
-        </button>
-        <button
-          className="icon-btn"
-          type="button"
-          title="Switch to Markdown"
-          onClick={() => setNoteKind(note.id, 'markdown')}
-        >
-          <IconSliders />
-        </button>
-        <span style={{ flex: 1 }} />
-        <button
-          className="icon-btn"
-          type="button"
-          title="Lock"
-          onClick={async () => {
-            const pin = await promptPin('Lock this note')
-            if (pin) void lockNote(note.id, pin)
-          }}
-        >
-          <IconLock />
-        </button>
-      </div>
+      <EditorActions note={note} />
     </div>
   )
 }

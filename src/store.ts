@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { Category, LoadProgress, Note, NoteKind, Screen, Settings, Toast } from './types'
+import type { Category, ListType, LoadProgress, Note, NoteKind, Screen, Settings, Toast } from './types'
 import { idbDel, idbGet, idbGetAll, idbSet, kvGet, kvSet } from './lib/idb'
 import { formatBytes, titleFromContent, uid } from './lib/format'
 import { kindFromName, languageLabel, MAX_OPEN, PERSIST_MAX, WARN_SIZE } from './lib/languages'
@@ -12,6 +12,7 @@ import {
   readFileStreaming,
   writeHandle,
 } from './lib/files'
+import { parseList, serializeList } from './lib/markdown'
 import { applyLineEnding } from './lib/encoding'
 import { decryptText, encryptText, hashPin, verifyPin } from './lib/crypto'
 import type { EditorView } from '@codemirror/view'
@@ -41,15 +42,29 @@ type State = {
   unlockNoteId: string | null
   confirm: ConfirmDialog | null
   textPrompt: TextPrompt | null
+  trash: Note[]
+  trashContents: Record<string, string>
 }
 
 const defaultSettings: Settings = {
   theme: 'dark',
+  language: 'en',
   wrap: true,
   fontSize: 15,
   pinHash: null,
   pinSalt: null,
   appLock: false,
+}
+
+function resolvedTheme(theme: Settings['theme']): 'dark' | 'light' {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return theme
+}
+
+function applyTheme(theme: Settings['theme']) {
+  document.documentElement.dataset.theme = resolvedTheme(theme)
 }
 
 const handles = new Map<string, FileSystemFileHandle>()
@@ -101,6 +116,7 @@ function seedNotes(): { notes: Note[]; contents: Record<string, string> } {
     language: 'Markdown',
     dirty: false,
     size: seedMd.length,
+    images: [],
   }
   const shop: Note = {
     id: uid(),
@@ -119,6 +135,8 @@ function seedNotes(): { notes: Note[]; contents: Record<string, string> } {
     language: 'List',
     dirty: false,
     size: seedList.length,
+    listType: 'checklist',
+    images: [],
   }
   return {
     notes: [md, shop],
@@ -146,6 +164,8 @@ let state: State = {
   unlockNoteId: null,
   confirm: null,
   textPrompt: null,
+  trash: [],
+  trashContents: {},
 }
 
 const listeners = new Set<() => void>()
@@ -266,10 +286,11 @@ function schedulePersist() {
 }
 
 async function persist() {
-  const { notes, categories, settings, openTabs, activeId, filter, sidebar, contents } = state
+  const { notes, categories, settings, openTabs, activeId, filter, sidebar, contents, trash, trashContents } = state
   await kvSet('categories', categories)
   await kvSet('settings', settings)
   await kvSet('session', { openTabs, activeId, filter, sidebar })
+  await kvSet('trash', { notes: trash, contents: trashContents })
   for (const note of notes) {
     const text = getContent(note.id)
     const size = new Blob([text]).size
@@ -321,8 +342,9 @@ async function boot() {
     }
   }
 
+  const savedTrash = await kvGet<{ notes: Note[]; contents: Record<string, string> }>('trash')
   const settings = { ...defaultSettings, ...savedSettings }
-  document.documentElement.dataset.theme = settings.theme
+  applyTheme(settings.theme)
 
   set({
     ready: true,
@@ -330,6 +352,8 @@ async function boot() {
     categories: savedCats?.length ? savedCats : seedCats,
     contents,
     originals,
+    trash: savedTrash?.notes ?? [],
+    trashContents: savedTrash?.contents ?? {},
     settings,
     openTabs: session?.openTabs?.filter((id) => notes.some((n) => n.id === id)) ?? [],
     activeId: session?.activeId && notes.some((n) => n.id === session.activeId) ? session.activeId : null,
@@ -342,8 +366,13 @@ async function boot() {
 }
 
 export function setTheme(theme: Settings['theme']) {
-  document.documentElement.dataset.theme = theme
+  applyTheme(theme)
   set({ settings: { ...state.settings, theme } })
+  schedulePersist()
+}
+
+export function setLanguage(language: string) {
+  set({ settings: { ...state.settings, language } })
   schedulePersist()
 }
 
@@ -394,7 +423,7 @@ export function setNoteContent(id: string, text: string) {
     dirty: true,
     updatedAt: Date.now(),
     size: new Blob([text]).size,
-    title: note.fromDisk ? note.title : titleFromContent(text, note.title),
+    title: note.fromDisk || note.title.trim() ? note.title : titleFromContent(text, note.title),
   })
   schedulePersist()
 }
@@ -449,6 +478,8 @@ export function newNote(kind: NoteKind = 'markdown') {
     language: languageLabel(kind === 'markdown' ? 'n.md' : null, kind),
     dirty: true,
     size: starter.length,
+    images: [],
+    listType: kind === 'checklist' ? 'checklist' : undefined,
   }
   set({
     notes: [note, ...state.notes],
@@ -674,26 +705,156 @@ export async function saveActiveAs() {
 }
 
 export function deleteNote(id: string) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
   unregisterView(id)
   handles.delete(id)
   const contents = { ...state.contents }
   const originals = { ...state.originals }
+  const text = contents[id] ?? ''
   delete contents[id]
   delete originals[id]
   const openTabs = state.openTabs.filter((t) => t !== id)
   const activeId = state.activeId === id ? (openTabs[openTabs.length - 1] ?? null) : state.activeId
-  set({
+  const next = {
     notes: state.notes.filter((n) => n.id !== id),
     contents,
     originals,
     openTabs,
     activeId,
-    screen: activeId ? state.screen : 'library',
-  })
+    screen: (activeId ? state.screen : 'library') as Screen,
+  }
+  if (note.fromDisk) {
+    set(next)
+  } else {
+    set({
+      ...next,
+      trash: [{ ...note, updatedAt: Date.now() }, ...state.trash.filter((n) => n.id !== id)],
+      trashContents: { ...state.trashContents, [id]: text },
+    })
+    toast('Moved to trash')
+  }
   void idbDel('notes', id)
   void idbDel('contents', id)
   void idbDel('handles', id)
   schedulePersist()
+}
+
+export function restoreNote(id: string) {
+  const note = state.trash.find((n) => n.id === id)
+  if (!note) return
+  const content = state.trashContents[id] ?? ''
+  const { [id]: _removed, ...trashContents } = state.trashContents
+  set({
+    trash: state.trash.filter((n) => n.id !== id),
+    trashContents,
+    notes: [{ ...note, updatedAt: Date.now() }, ...state.notes],
+    contents: { ...state.contents, [id]: content },
+    originals: { ...state.originals, [id]: content },
+  })
+  void idbSet('notes', { ...note, dirty: false, updatedAt: Date.now() })
+  void idbSet('contents', content, id)
+  schedulePersist()
+  toast('Note restored')
+  activateTab(id)
+}
+
+export function purgeNote(id: string) {
+  const { [id]: _removed, ...trashContents } = state.trashContents
+  set({
+    trash: state.trash.filter((n) => n.id !== id),
+    trashContents,
+  })
+  schedulePersist()
+}
+
+export function emptyTrash() {
+  if (!state.trash.length) return
+  set({ trash: [], trashContents: {} })
+  schedulePersist()
+  toast('Trash emptied')
+}
+
+export function addNoteImage(id: string, dataUrl: string) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
+  const images = [...(note.images ?? []), dataUrl]
+  if (images.length > 8) {
+    toast('Maximum 8 images per note', 'warn')
+    return
+  }
+  patchNote(id, { images, updatedAt: Date.now() })
+  schedulePersist()
+}
+
+export function removeNoteImage(id: string, index: number) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note?.images) return
+  patchNote(id, { images: note.images.filter((_, i) => i !== index), updatedAt: Date.now() })
+  schedulePersist()
+}
+
+export function exportNote(id: string) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
+  const name = `${(note.title.trim() || 'note').replace(/[<>:"/\\|?*]/g, '_')}.md`
+  downloadText(name, getContent(id), 'utf-8')
+  toast('Exported')
+}
+
+export function wrapActive(left: string, right = left) {
+  const id = state.activeId
+  if (!id) return
+  const view = views.get(id)
+  if (view) {
+    const { from, to } = view.state.selection.main
+    const selected = view.state.doc.sliceString(from, to)
+    view.dispatch({
+      changes: { from, to, insert: `${left}${selected}${right}` },
+      selection: { anchor: from + left.length, head: from + left.length + selected.length },
+    })
+    markDirty(id)
+    return
+  }
+  setNoteContent(id, `${left}${getContent(id)}${right}`)
+}
+
+export function prefixActiveLine(prefix: string) {
+  const id = state.activeId
+  if (!id) return
+  const view = views.get(id)
+  if (!view) {
+    setNoteContent(id, `${prefix}${getContent(id)}`)
+    return
+  }
+  const line = view.state.doc.lineAt(view.state.selection.main.from)
+  const next = line.text.startsWith(prefix) ? line.text.slice(prefix.length) : `${prefix}${line.text}`
+  view.dispatch({ changes: { from: line.from, to: line.to, insert: next } })
+  markDirty(id)
+}
+
+export function setListType(id: string, listType: ListType) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
+  const current = note.listType ?? 'checklist'
+  const items = parseList(getContent(id), current)
+  setNoteContent(id, serializeList(items, listType))
+  patchNote(id, { listType, kind: 'checklist', updatedAt: Date.now() })
+  schedulePersist()
+}
+
+export function toggleNoteOrList(id: string) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
+  if (note.kind === 'checklist') {
+    setNoteKind(id, 'markdown')
+    return
+  }
+  const listType = note.listType ?? 'checklist'
+  const items = parseList(getContent(id), listType)
+  setNoteContent(id, items.length ? serializeList(items, listType) : '- [ ] ')
+  setNoteKind(id, 'checklist')
+  patchNote(id, { listType })
 }
 
 export function pinNote(id: string) {
@@ -704,7 +865,12 @@ export function pinNote(id: string) {
 }
 
 export function setNoteKind(id: string, kind: NoteKind) {
-  patchNote(id, { kind, language: languageLabel(state.notes.find((n) => n.id === id)?.fileName ?? null, kind) })
+  const note = state.notes.find((n) => n.id === id)
+  patchNote(id, {
+    kind,
+    language: languageLabel(note?.fileName ?? null, kind),
+    listType: kind === 'checklist' ? (note?.listType ?? 'checklist') : note?.listType,
+  })
   schedulePersist()
 }
 
@@ -720,6 +886,40 @@ export function toggleNoteCategory(noteId: string, categoryId: string) {
     ? note.categoryIds.filter((c) => c !== categoryId)
     : [...note.categoryIds, categoryId]
   patchNote(noteId, { categoryIds, updatedAt: Date.now() })
+  schedulePersist()
+}
+
+export function renameCategory(id: string, name: string) {
+  const trimmed = name.trim()
+  if (!trimmed) return
+  set({ categories: state.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c)) })
+  schedulePersist()
+}
+
+export function duplicateNote(id: string) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note || note.locked) return
+  const nid = uid()
+  const now = Date.now()
+  const text = getContent(id)
+  const copy: Note = {
+    ...note,
+    id: nid,
+    title: note.title ? `${note.title} copy` : '',
+    createdAt: now,
+    updatedAt: now,
+    fileName: null,
+    filePath: null,
+    fromDisk: false,
+    dirty: true,
+    images: [...(note.images ?? [])],
+  }
+  set({
+    notes: [copy, ...state.notes],
+    contents: { ...state.contents, [nid]: text },
+    originals: { ...state.originals, [nid]: text },
+  })
+  openTab(nid)
   schedulePersist()
 }
 

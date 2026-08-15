@@ -22,6 +22,18 @@ export function formatUpdated(ts: number): string {
   return `Updated: ${formatPrettyDate(ts)}`
 }
 
+export function formatStamp(ts: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+    .format(new Date(ts))
+    .toUpperCase()
+}
+
 export function formatCreated(ts: number): string {
   return `Created: ${formatPrettyDate(ts)}`
 }
