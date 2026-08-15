@@ -15,6 +15,14 @@ dist-ssr
 release
 packaging
 *.pfx
+*.exe
+*.msix
+*.appinstaller
+
+# Local / generated
+.cursor/
+public/icon-proposed.svg
+src-tauri/gen/
 
 # Editor directories and files
 .vscode/*

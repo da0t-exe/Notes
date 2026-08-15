@@ -39,6 +39,8 @@ MIT — see [LICENSE](https://github.com/da0t-exe/Notes/blob/main/LICENSE).
 
 ## Development
 
+Needs **Windows**, [Node.js](https://nodejs.org/) 18+, and [Rust](https://rustup.rs/).
+
 ```bash
 npm install
 npm run app
