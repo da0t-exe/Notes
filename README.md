@@ -20,7 +20,7 @@
 ## Overview
 
 Notes is a native Windows app built with Tauri + Rust. Fast startup, tabbed
-interface, live Markdown, no Electron.
+interface, live Markdown, no Electron. Built with [Cursor Agent](https://cursor.com).
 
 - Live Markdown rendering
 - Notepad-style tabs
@@ -32,6 +32,10 @@ interface, live Markdown, no Electron.
 **Portable** — [Notes-v0.2.exe](https://github.com/da0t-exe/Notes/releases/latest)
 
 **App Installer** — [Notes.appinstaller](https://github.com/da0t-exe/Notes/releases/latest) (keep the `.msix` next to it, or install straight from the release)
+
+## License
+
+MIT — see [LICENSE](https://github.com/da0t-exe/Notes/blob/main/LICENSE).
 
 ## Development
 
@@ -48,6 +52,6 @@ npm run dist:appinstaller
 ```
 
 <div align="center">
-<sub>Built with Rust & Tauri by <a href="https://github.com/da0t-exe">da0t-exe</a></sub>
+<sub>Built with Rust & Tauri (and Cursor Agent) by <a href="https://github.com/da0t-exe">da0t-exe</a></sub>
 </div>
 
