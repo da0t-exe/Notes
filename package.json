@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.2.0",
   "description": "Notes — native Windows editor with a Monospace look",
-  "author": "Notes",
+  "author": "da0t-exe",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
