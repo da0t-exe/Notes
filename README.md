@@ -52,6 +52,6 @@ npm run dist:appinstaller
 ```
 
 <div align="center">
-<sub>Built with Rust & Tauri (and Cursor Agent) by <a href="https://github.com/da0t-exe">da0t-exe</a></sub>
+<sub>Built with Rust & Tauri by <a href="https://github.com/da0t-exe">da0t-exe</a></sub> (and Cursor Agent)
 </div>
 
