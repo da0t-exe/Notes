@@ -1,16 +1,16 @@
 # Notes
 
-App Windows native (Tauri + Rust).
+Native Windows app (Tauri + Rust). Tabbed text editor with a Monospace Notes look.
 
 ```bash
 npm install
 npm run app
 ```
 
-Pour un installateur `.exe` :
+Build an installer:
 
 ```bash
 npm run dist
 ```
 
-Le fichier sort dans `src-tauri/target/release/bundle/nsis/`.
+The installer is written to `src-tauri/target/release/bundle/nsis/`.

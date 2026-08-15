@@ -1,7 +1,7 @@
 [package]
 name = "notes"
-version = "1.0.0"
-description = "Notes — éditeur Windows style Monospace"
+version = "0.1.0"
+description = "Notes — native Windows editor with a Monospace look"
 authors = ["Notes"]
 edition = "2021"
 

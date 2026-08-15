@@ -8,12 +8,9 @@ import {
   IconGear,
   IconLock,
   IconMenu,
-  IconMoon,
   IconPin,
   IconPlus,
-  IconSearch,
   IconSort,
-  IconSun,
   IconTrash,
 } from './icons'
 import { parseChecklist, serializeChecklist } from './lib/markdown'
@@ -53,13 +50,14 @@ import {
   setWrap,
   toggleDiff,
   togglePreview,
-  toggleSidebar,
   unlockApp,
   unlockNote,
   useCursor,
   useStore,
 } from './store'
 import type { Note } from './types'
+
+type SortKey = 'updated-desc' | 'updated-asc' | 'title-asc' | 'title-desc' | 'created-desc' | 'created-asc'
 
 export default function App() {
   const ready = useStore((s) => s.ready)
@@ -130,7 +128,7 @@ export default function App() {
     return (
       <div className="app">
         <TitleBar />
-        <div className="lock">Chargement…</div>
+        <div className="lock">Loading...</div>
       </div>
     )
   }
@@ -145,13 +143,13 @@ function TitleBar() {
       <img src={`${import.meta.env.BASE_URL}icon.png`} width={16} height={16} alt="" />
       <span className="titlebar-name">Notes</span>
       <span style={{ flex: 1 }} />
-      <button type="button" className="win-btn" onClick={() => window.notesNative?.minimize()} title="Réduire">
+      <button type="button" className="win-btn" onClick={() => window.notesNative?.minimize()} title="Minimize">
         ─
       </button>
-      <button type="button" className="win-btn" onClick={() => window.notesNative?.maximize()} title="Agrandir">
+      <button type="button" className="win-btn" onClick={() => window.notesNative?.maximize()} title="Maximize">
         □
       </button>
-      <button type="button" className="win-btn close" onClick={() => window.notesNative?.close()} title="Fermer">
+      <button type="button" className="win-btn close" onClick={() => window.notesNative?.close()} title="Close">
         ×
       </button>
     </div>
@@ -165,49 +163,52 @@ function quitApp() {
 
 function Shell() {
   const screen = useStore((s) => s.screen)
-  const sidebar = useStore((s) => s.sidebar)
   const notes = useStore((s) => s.notes)
-  const openTabs = useStore((s) => s.openTabs)
   const activeId = useStore((s) => s.activeId)
   const filter = useStore((s) => s.filter)
   const categories = useStore((s) => s.categories)
-  const theme = useStore((s) => s.settings.theme)
   const toasts = useStore((s) => s.toasts)
   const progress = useStore((s) => s.progress)
   const confirm = useStore((s) => s.confirm)
   const textPrompt = useStore((s) => s.textPrompt)
   const unlockNoteId = useStore((s) => s.unlockNoteId)
-  const [menu, setMenu] = useState(false)
-  const [sort, setSort] = useState<'updated' | 'name'>('updated')
+  const [drawer, setDrawer] = useState(false)
+  const [sort, setSort] = useState<SortKey>('updated-desc')
+  const [sortOpen, setSortOpen] = useState(false)
   const [drop, setDrop] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const sortRef = useRef<HTMLDivElement>(null)
 
   const active = notes.find((n) => n.id === activeId) ?? null
+  const libraryOnly = screen === 'library' || !activeId
+
+  const title =
+    screen === 'categories' ? 'Categories' : screen === 'settings' ? 'Settings' : libraryOnly ? 'Notes' : 'Notes'
 
   const visible = useMemo(() => {
     let list = notes
     if (filter !== 'all') list = list.filter((n) => n.categoryIds.includes(filter))
     return [...list].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-      if (sort === 'name') return a.title.localeCompare(b.title)
+      if (sort === 'title-asc') return a.title.localeCompare(b.title)
+      if (sort === 'title-desc') return b.title.localeCompare(a.title)
+      if (sort === 'created-asc') return a.createdAt - b.createdAt
+      if (sort === 'created-desc') return b.createdAt - a.createdAt
+      if (sort === 'updated-asc') return a.updatedAt - b.updatedAt
       return b.updatedAt - a.updatedAt
     })
   }, [notes, filter, sort])
 
-  const libraryOnly = screen === 'library' || !activeId
-  const showSidebar = sidebar || libraryOnly
-
   useEffect(() => {
     function onDown(e: MouseEvent) {
-      if (menu && menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false)
+      if (sortOpen && sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false)
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
-  }, [menu])
+  }, [sortOpen])
 
   return (
     <div
-      className={`app ${libraryOnly ? 'is-library' : ''} ${drop ? 'drop' : ''} ${isNative() ? 'native' : ''}`}
+      className={`app ${drop ? 'drop' : ''} ${isNative() ? 'native' : ''}`}
       onDragOver={(e) => {
         e.preventDefault()
         setDrop(true)
@@ -222,109 +223,116 @@ function Shell() {
     >
       <TitleBar />
       <header className="header">
-        {screen === 'categories' || screen === 'settings' ? (
+        {screen === 'categories' || screen === 'settings' || !libraryOnly ? (
           <button
             className="icon-btn"
             type="button"
-            title="Retour"
-            onClick={() => setScreen(activeId ? 'editor' : 'library')}
+            title="Back"
+            onClick={() => setScreen('library')}
           >
             <IconBack />
           </button>
         ) : (
-          <button className="icon-btn" type="button" title="Menu / notes" onClick={toggleSidebar}>
+          <button className="icon-btn" type="button" title="Menu" onClick={() => setDrawer(true)}>
             <IconMenu />
           </button>
         )}
         <h1
-          className="serif"
+          className="headline"
           role="button"
           tabIndex={0}
-          title="Bibliothèque / éditeur"
-          onClick={() => {
-            if (screen === 'library' && activeId) setScreen('editor')
-            else setScreen('library')
-          }}
+          onClick={() => setScreen('library')}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') setScreen(screen === 'library' && activeId ? 'editor' : 'library')
+            if (e.key === 'Enter') setScreen('library')
           }}
         >
-          {screen === 'categories' ? 'Catégories' : screen === 'settings' ? 'Paramètres' : 'Notes'}
+          {title}
         </h1>
-        <button
-          className="icon-btn"
-          type="button"
-          title={theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        >
-          {theme === 'dark' ? <IconSun /> : <IconMoon />}
-        </button>
-        <button
-          className="icon-btn"
-          type="button"
-          onClick={() => setSort((s) => (s === 'updated' ? 'name' : 'updated'))}
-          title={sort === 'updated' ? 'Trier par nom' : 'Trier par date'}
-        >
-          <IconSort />
-        </button>
-        <button className="icon-btn" type="button" title="Rechercher" onClick={findInActive}>
-          <IconSearch />
-        </button>
-        <button className="icon-btn" type="button" title="Paramètres" onClick={() => setScreen('settings')}>
+        {libraryOnly && screen === 'library' ? (
+          <div style={{ position: 'relative' }} ref={sortRef}>
+            <button className="icon-btn" type="button" title="Sort" onClick={() => setSortOpen((v) => !v)}>
+              <IconSort />
+            </button>
+            {sortOpen ? (
+              <div className="menu">
+                {(
+                  [
+                    ['updated-desc', 'Newest'],
+                    ['updated-asc', 'Least updated'],
+                    ['created-desc', 'Newest created'],
+                    ['created-asc', 'Oldest'],
+                    ['title-asc', 'Title A-Z'],
+                    ['title-desc', 'Title Z-A'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setSort(key)
+                      setSortOpen(false)
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <button className="icon-btn" type="button" title="Settings" onClick={() => setScreen('settings')}>
           <IconGear />
         </button>
-        <div style={{ position: 'relative' }} ref={menuRef}>
-          <button className="icon-btn" type="button" title="Nouveau" onClick={() => setMenu((v) => !v)}>
-            <IconPlus />
-          </button>
-          {menu ? (
-            <div className="menu">
-              <button
-                type="button"
-                onClick={() => {
-                  setMenu(false)
-                  newNote('markdown')
-                }}
-              >
-                Nouvelle note
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenu(false)
-                  newNote('checklist')
-                }}
-              >
-                Nouvelle liste
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenu(false)
-                  newNote('text')
-                }}
-              >
-                Fichier texte
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenu(false)
-                  void openFromDisk()
-                }}
-              >
-                Ouvrir un fichier…
-              </button>
-            </div>
-          ) : null}
-        </div>
       </header>
+
+      {drawer ? (
+        <div className="drawer-back" onClick={() => setDrawer(false)}>
+          <nav className="drawer" onClick={(e) => e.stopPropagation()}>
+            <button
+              className={`drawer-item ${screen === 'library' ? 'active' : ''}`}
+              type="button"
+              onClick={() => {
+                setScreen('library')
+                setDrawer(false)
+              }}
+            >
+              Notes
+              <span>›</span>
+            </button>
+            <button
+              className={`drawer-item ${screen === 'categories' ? 'active' : ''}`}
+              type="button"
+              onClick={() => {
+                setScreen('categories')
+                setDrawer(false)
+              }}
+            >
+              Categories
+              <span>›</span>
+            </button>
+            <button
+              className="drawer-item"
+              type="button"
+              onClick={() => {
+                setFilter('all')
+                setScreen('library')
+                setDrawer(false)
+              }}
+            >
+              Trash
+              <span>›</span>
+            </button>
+          </nav>
+        </div>
+      ) : null}
 
       {screen === 'library' || screen === 'editor' ? (
         <div className="pills">
-          <button className={`pill ${filter === 'all' ? 'active' : ''}`} type="button" onClick={() => setFilter('all')}>
-            TOUT
-          </button>
+          {filter !== 'all' ? (
+            <button className="pill-clear" type="button" title="Show all" onClick={() => setFilter('all')}>
+              <IconClose width={16} height={16} />
+            </button>
+          ) : null}
           {categories.map((c) => (
             <button
               key={c.id}
@@ -332,75 +340,46 @@ function Shell() {
               type="button"
               onClick={() => setFilter(c.id)}
             >
-              {c.name.toUpperCase()}
+              {c.name}
             </button>
           ))}
-          <button className="pill" type="button" title="Gérer les catégories" onClick={() => setScreen('categories')}>
-            +
-          </button>
         </div>
-      ) : (
-        <div />
-      )}
+      ) : null}
 
       {screen === 'categories' ? (
         <CategoriesPage />
       ) : screen === 'settings' ? (
         <SettingsPage />
+      ) : libraryOnly ? (
+        <div className="workspace library-only">
+          <aside className="sidebar">
+            {visible.length === 0 ? (
+              <p className="empty-hint">You don&apos;t have any notes yet</p>
+            ) : (
+              visible.map((note) => <NoteCard key={note.id} note={note} />)
+            )}
+          </aside>
+        </div>
       ) : (
-        <div
-          className={`workspace ${showSidebar ? '' : 'no-sidebar'} ${libraryOnly ? 'library-only' : ''} ${sidebar && !libraryOnly ? 'force-side' : ''}`}
-        >
-          {showSidebar ? (
-            <aside className={`sidebar ${libraryOnly ? 'library-full' : ''}`}>
-              {visible.length === 0 ? (
-                <p className="empty-hint">Aucune note ici. Appuie sur + pour en créer une.</p>
-              ) : (
-                visible.map((note) => <NoteCard key={note.id} note={note} />)
-              )}
-            </aside>
-          ) : null}
-          {!libraryOnly ? (
-            <section className="editor-col">
-              <div className="tabs">
-                {openTabs.map((id) => {
-                  const n = notes.find((x) => x.id === id)
-                  if (!n) return null
-                  return (
-                    <button
-                      key={id}
-                      className={`tab ${id === activeId ? 'active' : ''}`}
-                      type="button"
-                      onClick={() => activateTab(id)}
-                    >
-                      {n.dirty ? <span className="dot" /> : null}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {n.title}
-                      </span>
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          closeTab(id)
-                        }}
-                      >
-                        <IconClose width={14} height={14} />
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-              {unlockNoteId ? (
-                <UnlockNote id={unlockNoteId} />
-              ) : active ? (
-                <>
-                  <EditorPane note={active} />
-                  <StatusBar note={active} />
-                </>
-              ) : null}
-            </section>
-          ) : null}
+        <div className="workspace with-editor">
+          <section className="editor-col">
+            {unlockNoteId ? (
+              <UnlockNote id={unlockNoteId} />
+            ) : active ? (
+              <>
+                <EditorPane note={active} />
+                <StatusBar note={active} />
+              </>
+            ) : null}
+          </section>
         </div>
       )}
+
+      {libraryOnly && screen === 'library' ? (
+        <button className="fab" type="button" title="New note" onClick={() => newNote('markdown')}>
+          <IconPlus />
+        </button>
+      ) : null}
 
       {progress ? (
         <div className="progress">
@@ -419,14 +398,14 @@ function Shell() {
       {confirm ? (
         <div className="modal-back">
           <div className="modal">
-            <h2 className="serif">{confirm.title}</h2>
+            <h2>{confirm.title}</h2>
             <p>{confirm.text}</p>
             <div className="modal-actions">
-              <button type="button" onClick={() => answerConfirm(false)}>
-                ANNULER
-              </button>
               <button className="yes" type="button" onClick={() => answerConfirm(true)}>
-                CONTINUER
+                Continue
+              </button>
+              <button type="button" onClick={() => answerConfirm(false)}>
+                Cancel
               </button>
             </div>
           </div>
@@ -443,7 +422,7 @@ function PromptModal({ prompt }: { prompt: { title: string; label: string; secre
   return (
     <div className="modal-back">
       <div className="modal">
-        <h2 className="serif">{prompt.title}</h2>
+        <h2>{prompt.title}</h2>
         <p>{prompt.label}</p>
         <input
           autoFocus
@@ -457,11 +436,11 @@ function PromptModal({ prompt }: { prompt: { title: string; label: string; secre
           }}
         />
         <div className="modal-actions">
-          <button type="button" onClick={() => answerText(null)}>
-            ANNULER
-          </button>
           <button className="yes" type="button" onClick={() => answerText(value)}>
-            OK
+            Save
+          </button>
+          <button type="button" onClick={() => answerText(null)}>
+            Cancel
           </button>
         </div>
       </div>
@@ -471,28 +450,36 @@ function PromptModal({ prompt }: { prompt: { title: string; label: string; secre
 
 function NoteCard({ note }: { note: Note }) {
   const content = useStore((s) => s.contents[note.id] ?? '')
-  const cats = useStore((s) => s.categories)
-  const label = cats.find((c) => note.categoryIds.includes(c.id))?.name ?? note.language
   const items = note.kind === 'checklist' ? parseChecklist(content) : []
 
   return (
-    <div className="note-card" role="button" tabIndex={0} onClick={() => activateTab(note.id)} onKeyDown={(e) => {
-      if (e.key === 'Enter') activateTab(note.id)
-    }}>
-      <div className="kicker">{note.locked ? 'Verrouillé' : label}</div>
-      {note.kind === 'checklist' ? (
-        <>
-          <h3>{note.title}</h3>
-          {items.slice(0, 5).map((it, i) => (
+    <div
+      className="note-card"
+      role="button"
+      tabIndex={0}
+      onClick={() => activateTab(note.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') activateTab(note.id)
+      }}
+    >
+      {(note.title || note.locked) && (
+        <div className="note-card-head">
+          {note.title ? <h3>{note.title}</h3> : <span />}
+          {note.locked ? (
+            <span className="lock-mark">
+              <IconLock width={18} height={18} />
+            </span>
+          ) : null}
+        </div>
+      )}
+      {note.locked ? null : note.kind === 'checklist' ? (
+        <div className="checks">
+          {items.slice(0, 6).map((it, i) => (
             <div
               className="check-row"
               key={it.id}
               onClick={(e) => {
                 e.stopPropagation()
-                if (note.locked) {
-                  activateTab(note.id)
-                  return
-                }
                 const next = items.map((x, j) => (j === i ? { ...x, done: !x.done } : x))
                 setNoteContent(note.id, serializeChecklist(next))
               }}
@@ -501,14 +488,9 @@ function NoteCard({ note }: { note: Note }) {
               <span>{it.text}</span>
             </div>
           ))}
-        </>
+        </div>
       ) : (
-        <>
-          <div className="kicker" style={{ marginTop: -4 }}>
-            {note.title}
-          </div>
-          <pre>{note.locked ? '••••••••' : previewText(content, 260)}</pre>
-        </>
+        <pre>{previewText(content, 220)}</pre>
       )}
     </div>
   )
@@ -526,8 +508,7 @@ function StatusBar({ note }: { note: Note }) {
         Ln {cursor.line}, Col {cursor.col}
       </span>
       <span>{formatBytes(note.size)}</span>
-      <span>{note.language}</span>
-      <select value={note.encoding} onChange={(e) => setEncoding(note.id, e.target.value)} title="Encodage">
+      <select value={note.encoding} onChange={(e) => setEncoding(note.id, e.target.value)} title="Encoding">
         {ENCODINGS.map((enc) => (
           <option key={enc} value={enc}>
             {enc.toUpperCase()}
@@ -537,45 +518,39 @@ function StatusBar({ note }: { note: Note }) {
       <select
         value={note.lineEnding}
         onChange={(e) => setLineEnding(note.id, e.target.value as Note['lineEnding'])}
-        title="Fins de ligne"
+        title="Line endings"
       >
         <option value="LF">LF</option>
         <option value="CRLF">CRLF</option>
         <option value="CR">CR</option>
       </select>
       <select value={note.kind} onChange={(e) => setNoteKind(note.id, e.target.value as Note['kind'])} title="Type">
-        <option value="text">Texte</option>
+        <option value="text">Text</option>
         <option value="markdown">Markdown</option>
-        <option value="checklist">Liste</option>
+        <option value="checklist">List</option>
       </select>
       <button type="button" onClick={() => setWrap(!wrap)}>
-        {wrap ? 'RETOUR LIGNE' : 'SANS RETOUR'}
+        {wrap ? 'Wrap' : 'No wrap'}
       </button>
       <button type="button" onClick={togglePreview}>
-        {preview ? 'ÉDITION' : 'APERÇU'}
+        {preview ? 'Edit' : 'Preview'}
       </button>
       <button type="button" onClick={toggleDiff}>
-        {diff ? 'MASQUER DIFF' : 'DIFF'}
-      </button>
-      <button type="button" onClick={() => void saveActive()}>
-        ENREGISTRER
-      </button>
-      <button type="button" onClick={() => void saveActiveAs()}>
-        SOUS…
+        {diff ? 'Hide diff' : 'Diff'}
       </button>
       <span style={{ flex: 1 }} />
-      <button className="icon-btn" type="button" title="Épingler" onClick={() => pinNote(note.id)}>
+      <button className="icon-btn" type="button" title="Pin" onClick={() => pinNote(note.id)}>
         <IconPin />
       </button>
-      <button className="icon-btn" type="button" title="Catégories" onClick={() => setScreen('categories')}>
+      <button className="icon-btn" type="button" title="Categories" onClick={() => setScreen('categories')}>
         <IconFolder />
       </button>
       <button
         className="icon-btn"
         type="button"
-        title="Verrouiller"
+        title="Lock"
         onClick={async () => {
-          const pin = await promptPin('Verrouiller cette note')
+          const pin = await promptPin('Add password')
           if (pin) void lockNote(note.id, pin)
         }}
       >
@@ -584,9 +559,9 @@ function StatusBar({ note }: { note: Note }) {
       <button
         className="icon-btn"
         type="button"
-        title="Supprimer"
+        title="Delete"
         onClick={async () => {
-          const ok = await ask('Supprimer ?', `Supprimer « ${note.title} » ?`)
+          const ok = await ask('Delete note', `Delete “${note.title}”?`)
           if (ok) deleteNote(note.id)
         }}
       >
@@ -605,7 +580,7 @@ function CategoriesPage() {
       <div className="row">
         <input
           value={name}
-          placeholder="Nouvelle catégorie..."
+          placeholder="New category..."
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -622,26 +597,30 @@ function CategoriesPage() {
             setName('')
           }}
         >
-          ADD
+          Save
         </button>
       </div>
-      {categories.map((c) => (
-        <div key={c.id} className="cat-row">
-          <button
-            className="cat-btn"
-            type="button"
-            onClick={() => {
-              setFilter(c.id)
-              setScreen('library')
-            }}
-          >
-            {c.name}
-          </button>
-          <button className="icon-btn" type="button" title="Supprimer" onClick={() => removeCategory(c.id)}>
-            <IconClose />
-          </button>
-        </div>
-      ))}
+      {categories.length === 0 ? (
+        <p className="empty-hint">You don&apos;t have any categories yet</p>
+      ) : (
+        categories.map((c) => (
+          <div key={c.id} className="cat-row">
+            <button
+              className="cat-btn"
+              type="button"
+              onClick={() => {
+                setFilter(c.id)
+                setScreen('library')
+              }}
+            >
+              {c.name}
+            </button>
+            <button className="icon-btn" type="button" title="Delete" onClick={() => removeCategory(c.id)}>
+              <IconClose />
+            </button>
+          </div>
+        ))
+      )}
     </div>
   )
 }
@@ -652,16 +631,19 @@ function SettingsPage() {
 
   return (
     <div className="page">
-      <div className="settings-block">
-        <h2>APPARENCE</h2>
-        <div className="setting">
-          <span>Thème</span>
-          <button type="button" onClick={() => setTheme(settings.theme === 'dark' ? 'light' : 'dark')}>
-            {settings.theme === 'dark' ? 'Sombre' : 'Clair'}
-          </button>
-        </div>
-        <div className="setting">
-          <span>Taille du texte</span>
+      <div className="section-label">General</div>
+      <div className="option-group">
+        <button className="option" type="button" onClick={() => setTheme(settings.theme === 'dark' ? 'light' : 'dark')}>
+          <div className="left">
+            <span>Color theme</span>
+            <span className="desc">Choose a color theme for the app.</span>
+          </div>
+          <span>{settings.theme === 'dark' ? 'Dark' : 'Light'}</span>
+        </button>
+        <div className="option">
+          <div className="left">
+            <span>Font size</span>
+          </div>
           <span>
             <button type="button" onClick={() => setFontSize(Math.max(12, settings.fontSize - 1))}>
               −
@@ -672,75 +654,88 @@ function SettingsPage() {
             </button>
           </span>
         </div>
-        <div className="setting">
-          <span>Retour à la ligne</span>
-          <button type="button" onClick={() => setWrap(!settings.wrap)}>
-            {settings.wrap ? 'Oui' : 'Non'}
-          </button>
-        </div>
+        <button className="option" type="button" onClick={() => setWrap(!settings.wrap)}>
+          <div className="left">
+            <span>Word wrap</span>
+          </div>
+          <span>{settings.wrap ? 'On' : 'Off'}</span>
+        </button>
       </div>
-      <div className="settings-block">
-        <h2>SÉCURITÉ</h2>
-        <div className="setting">
-          <span>Code PIN</span>
+
+      <div className="themes">
+        <button
+          className={`theme-opt light ${settings.theme === 'light' ? 'active' : ''}`}
+          type="button"
+          onClick={() => setTheme('light')}
+        >
+          Light
+        </button>
+        <button
+          className={`theme-opt dark ${settings.theme === 'dark' ? 'active' : ''}`}
+          type="button"
+          onClick={() => setTheme('dark')}
+        >
+          Dark
+        </button>
+      </div>
+
+      <div className="section-label">Security</div>
+      <div className="option-group">
+        <div className="option">
+          <div className="left">
+            <span>Add password</span>
+            <span className="desc">The password must have at least 4 characters</span>
+          </div>
           <input
             type="password"
             value={pin}
             placeholder="••••"
             onChange={(e) => setPin(e.target.value)}
-            style={{ width: 120, background: 'transparent', border: 0, textAlign: 'right', outline: 'none' }}
           />
         </div>
         <button
-          className="add-item"
+          className="option"
           type="button"
           onClick={() => {
-            if (!pin.trim()) return
+            if (pin.trim().length < 4) return
             void setAppPin(pin, true)
             setPin('')
           }}
         >
-          ENREGISTRER LE PIN
+          <div className="left">
+            <span>Save</span>
+          </div>
         </button>
         {settings.pinHash ? (
-          <button
-            className="lock-btn"
-            type="button"
-            style={{ marginTop: 12 }}
-            onClick={() => void setAppPin('', false)}
-          >
-            RETIRER LE PIN
-          </button>
+          <>
+            <button className="option" type="button" onClick={() => void setAppPin('', false)}>
+              <div className="left">
+                <span>Remove password</span>
+              </div>
+            </button>
+            <button className="option" type="button" onClick={lockAppNow}>
+              <div className="left">
+                <span>Lock the app</span>
+              </div>
+            </button>
+          </>
         ) : null}
-        <button className="lock-btn" type="button" style={{ marginTop: 12 }} onClick={lockAppNow}>
-          VERROUILLER L’APP
-        </button>
       </div>
-      <div className="settings-block">
-        <h2>RACCOURCIS</h2>
-        <div className="setting">
-          <span>Nouveau</span>
-          <span>Ctrl+N</span>
-        </div>
-        <div className="setting">
-          <span>Ouvrir</span>
-          <span>Ctrl+O</span>
-        </div>
-        <div className="setting">
-          <span>Enregistrer</span>
-          <span>Ctrl+S</span>
-        </div>
-        <div className="setting">
-          <span>Rechercher</span>
-          <span>Ctrl+F</span>
-        </div>
-        <div className="setting">
-          <span>Aperçu Markdown</span>
-          <span>Alt+P</span>
-        </div>
-        <div className="setting">
-          <span>Diff</span>
-          <span>Alt+D</span>
+
+      <div className="section-label">About the app</div>
+      <div className="option-group">
+        <a className="option" href="https://github.com/da0t-exe/Notes" target="_blank" rel="noreferrer">
+          <div className="left">
+            <span>GitHub repository</span>
+            <span className="desc">Report issues, contribute, or request new features.</span>
+          </div>
+          <span>↗</span>
+        </a>
+        <div className="option">
+          <div className="left">
+            <span>Version</span>
+          </div>
+          <span>0.1.0</span>
         </div>
       </div>
     </div>
@@ -760,29 +755,29 @@ function LockApp() {
     <div className="app native">
       <TitleBar />
       <div className="lock">
-        <button className="icon-btn" type="button" style={{ alignSelf: 'flex-start' }} title="Quitter" onClick={quitApp}>
+        <button className="icon-btn" type="button" style={{ alignSelf: 'flex-start' }} title="Quit" onClick={quitApp}>
           <IconBack />
         </button>
-        <h1 className="serif">Unlock</h1>
-        <button className="finger-btn" type="button" title="Déverrouiller" onClick={() => void submit()}>
+        <h1>Unlock</h1>
+        <button className="finger-btn" type="button" title="Unlock" onClick={() => void submit()}>
           <IconFingerprint className="finger" />
         </button>
         <input
           autoFocus
           inputMode="numeric"
           value={pin}
-          placeholder="PIN"
+          placeholder="••••"
           onChange={(e) => setPin(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submit()
           }}
         />
-        {err ? <div className="toast error">Code incorrect</div> : null}
+        {err ? <div className="toast error">Wrong password</div> : null}
         <button className="lock-btn" type="button" onClick={() => void submit()}>
-          UNLOCK WITH PIN
+          Enter
         </button>
         <button type="button" onClick={quitApp}>
-          CANCEL
+          Cancel
         </button>
       </div>
     </div>
@@ -803,25 +798,25 @@ function UnlockNote({ id }: { id: string }) {
       <button className="icon-btn" type="button" style={{ alignSelf: 'flex-start' }} onClick={cancelUnlock}>
         <IconBack />
       </button>
-      <h1 className="serif">Unlock</h1>
-      <button className="finger-btn" type="button" onClick={() => void submit()}>
+        <h1>Unlock</h1>
+        <button className="finger-btn" type="button" onClick={() => void submit()}>
         <IconFingerprint className="finger" />
       </button>
       <input
         autoFocus
         value={pin}
-        placeholder="PIN"
+        placeholder="••••"
         onChange={(e) => setPin(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') void submit()
         }}
       />
-      {err ? <div>Code incorrect</div> : null}
+      {err ? <div className="toast error">Wrong password</div> : null}
       <button className="lock-btn" type="button" onClick={() => void submit()}>
-        UNLOCK WITH PIN
+        Enter
       </button>
       <button type="button" onClick={cancelUnlock}>
-        CANCEL
+        Cancel
       </button>
     </div>
   )

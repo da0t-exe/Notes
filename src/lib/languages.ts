@@ -111,14 +111,14 @@ export const TEXT_EXTS = [
 
 export const FILE_PICKER_TYPES: FilePickerAcceptType[] = [
   {
-    description: 'Documents texte',
+    description: 'Text documents',
     accept: {
       'text/plain': ['.txt', '.log', '.csv', '.tsv', '.ini', '.cfg', '.conf', '.env'],
       'text/markdown': ['.md', '.markdown', '.mdx'],
     },
   },
   {
-    description: 'Données',
+    description: 'Data',
     accept: {
       'application/json': ['.json', '.jsonc', '.json5'],
       'application/xml': ['.xml', '.svg'],
@@ -149,7 +149,7 @@ export const FILE_PICKER_TYPES: FilePickerAcceptType[] = [
 export function languageLabel(fileName: string | null, kind: string): string {
   if (!fileName) {
     if (kind === 'markdown') return 'Markdown'
-    if (kind === 'checklist') return 'Liste'
+    if (kind === 'checklist') return 'List'
     return 'Texte'
   }
   const ext = extOf(fileName)

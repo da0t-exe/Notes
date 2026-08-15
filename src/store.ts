@@ -66,15 +66,15 @@ const seedCats: Category[] = [
   { id: 'cat-personal', name: 'Personal' },
 ]
 
-const seedMd = `# Organise tes idées
+const seedMd = `# Organize your ideas
 
-Un éditeur _simple_ et \`puissant\`.
+A _simple_ and \`powerful\` editor.
 
-- Markdown en direct
-- Onglets façon Notepads
-- Fichiers volumineux (logs, JSON, code)
+- Live Markdown
+- Notepads-style tabs
+- Large files (logs, JSON, code)
 
-Ouvre un fichier avec **Ctrl+O**.`
+Open a file with **Ctrl+O**.`
 
 const seedList = `- [ ] 🍎
 - [ ] 🍞
@@ -116,7 +116,7 @@ function seedNotes(): { notes: Note[]; contents: Record<string, string> } {
     fileName: null,
     filePath: null,
     fromDisk: false,
-    language: 'Liste',
+    language: 'List',
     dirty: false,
     size: seedList.length,
   }
@@ -248,8 +248,8 @@ export function answerText(value: string | null) {
   set({ textPrompt: null })
 }
 
-export async function promptPin(title = 'Code PIN'): Promise<string | null> {
-  return askText(title, 'Entre ton code', true)
+export async function promptPin(title = 'PIN code'): Promise<string | null> {
+  return askText(title, 'Enter your code', true)
 }
 
 function patchNote(id: string, patch: Partial<Note>) {
@@ -427,9 +427,9 @@ export function newNote(kind: NoteKind = 'markdown') {
   const id = uid()
   const now = Date.now()
   const titles: Record<NoteKind, string> = {
-    markdown: 'Sans titre',
-    text: 'Nouveau fichier',
-    checklist: 'Liste',
+    markdown: '',
+    text: '',
+    checklist: '',
   }
   const starter = kind === 'checklist' ? '- [ ] ' : ''
   const note: Note = {
@@ -443,7 +443,7 @@ export function newNote(kind: NoteKind = 'markdown') {
     locked: false,
     encoding: 'utf-8',
     lineEnding: 'LF',
-    fileName: kind === 'markdown' ? 'sans-titre.md' : kind === 'checklist' ? null : 'sans-titre.txt',
+    fileName: kind === 'markdown' ? 'untitled.md' : kind === 'checklist' ? null : 'untitled.txt',
     filePath: null,
     fromDisk: false,
     language: languageLabel(kind === 'markdown' ? 'n.md' : null, kind),
@@ -486,7 +486,7 @@ export async function openFromDisk(incoming?: Array<FileSystemFileHandle | File>
       await ingestBrowserFile(file, isFileHandle(item) ? item : undefined)
     } catch (err) {
       set({ progress: null })
-      toast(err instanceof Error ? err.message : 'Impossible d’ouvrir le fichier', 'error')
+      toast(err instanceof Error ? err.message : 'Could not open the file', 'error')
     }
   }
   schedulePersist()
@@ -494,18 +494,18 @@ export async function openFromDisk(incoming?: Array<FileSystemFileHandle | File>
 
 async function ingestNative(file: NativeFile) {
   if (file.size > MAX_OPEN) {
-    toast(`${file.name} dépasse ${formatBytes(MAX_OPEN)}`, 'error')
+    toast(`${file.name} exceeds ${formatBytes(MAX_OPEN)}`, 'error')
     return
   }
   if (file.size > WARN_SIZE) {
     const ok = await ask(
-      'Fichier volumineux',
-      `${file.name} fait ${formatBytes(file.size)}. L’édition peut être plus lente. Continuer ?`,
+      'Large file',
+      `${file.name} is ${formatBytes(file.size)}. Editing may be slower. Continue?`,
     )
     if (!ok) return
   }
   if (file.binary) {
-    const ok = await ask('Fichier binaire ?', `${file.name} ne ressemble pas à du texte. L’ouvrir quand même ?`)
+    const ok = await ask('Binary file?', `${file.name} does not look like text. Open it anyway?`)
     if (!ok) return
   }
   const id = uid()
@@ -538,13 +538,13 @@ async function ingestNative(file: NativeFile) {
 
 async function ingestBrowserFile(file: File, handle?: FileSystemFileHandle) {
   if (file.size > MAX_OPEN) {
-    toast(`${file.name} dépasse ${formatBytes(MAX_OPEN)}`, 'error')
+    toast(`${file.name} exceeds ${formatBytes(MAX_OPEN)}`, 'error')
     return
   }
   if (file.size > WARN_SIZE) {
     const ok = await ask(
-      'Fichier volumineux',
-      `${file.name} fait ${formatBytes(file.size)}. L’édition peut être plus lente. Continuer ?`,
+      'Large file',
+      `${file.name} is ${formatBytes(file.size)}. Editing may be slower. Continue?`,
     )
     if (!ok) return
   }
@@ -556,7 +556,7 @@ async function ingestBrowserFile(file: File, handle?: FileSystemFileHandle) {
   set({ progress: null })
 
   if (result.binary) {
-    const ok = await ask('Fichier binaire ?', `${file.name} ne ressemble pas à du texte. L’ouvrir quand même ?`)
+    const ok = await ask('Binary file?', `${file.name} does not look like text. Open it anyway?`)
     if (!ok) return
   }
 
@@ -606,7 +606,7 @@ export async function saveActive() {
     } else if (handle) {
       const ok = await ensurePermission(handle)
       if (!ok) {
-        toast('Permission fichier refusée', 'error')
+        toast('File permission denied', 'error')
         return
       }
       await writeHandle(handle, text, note.encoding)
@@ -618,10 +618,10 @@ export async function saveActive() {
     }
     patchNote(id, { dirty: false, updatedAt: Date.now(), size: new Blob([text]).size })
     set({ originals: { ...state.originals, [id]: text } })
-    toast('Enregistré')
+    toast('Saved')
     schedulePersist()
   } catch (err) {
-    toast(err instanceof Error ? err.message : 'Échec de l’enregistrement', 'error')
+    toast(err instanceof Error ? err.message : 'Save failed', 'error')
   }
 }
 
@@ -646,7 +646,7 @@ export async function saveActiveAs() {
       language: languageLabel(saved.name, note.kind),
     })
     set({ originals: { ...state.originals, [id]: text } })
-    toast(`Enregistré sous ${saved.name}`)
+    toast(`Saved as ${saved.name}`)
     schedulePersist()
     return
   }
@@ -664,11 +664,11 @@ export async function saveActiveAs() {
       language: languageLabel(handle.name, note.kind),
     })
     set({ originals: { ...state.originals, [id]: text } })
-    toast(`Enregistré sous ${handle.name}`)
+    toast(`Saved as ${handle.name}`)
   } else {
     downloadText(name, text, note.encoding)
     patchNote(id, { dirty: false, updatedAt: Date.now() })
-    toast('Téléchargement lancé')
+    toast('Download started')
   }
   schedulePersist()
 }
@@ -727,7 +727,7 @@ export function addCategory(name: string): string | null {
   const trimmed = name.trim()
   if (!trimmed) return null
   if (state.categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-    toast('Cette catégorie existe déjà', 'warn')
+    toast('This category already exists', 'warn')
     return state.categories.find((c) => c.name.toLowerCase() === trimmed.toLowerCase())?.id ?? null
   }
   const id = uid()
@@ -758,13 +758,13 @@ export async function setAppPin(pin: string, enableLock: boolean) {
   if (!pin) {
     set({ settings: { ...state.settings, pinHash: null, pinSalt: null, appLock: false } })
     schedulePersist()
-    toast('PIN retiré')
+    toast('PIN removed')
     return
   }
   const { hash, salt } = await hashPin(pin)
   set({ settings: { ...state.settings, pinHash: hash, pinSalt: salt, appLock: enableLock } })
   schedulePersist()
-  toast(enableLock ? 'PIN enregistré — l’app se verrouille au démarrage' : 'PIN enregistré')
+  toast(enableLock ? 'PIN saved — the app locks on startup' : 'PIN saved')
 }
 
 export async function unlockApp(pin: string): Promise<boolean> {
@@ -791,7 +791,7 @@ export async function lockNote(id: string, pin: string) {
   })
   await idbSet('contents', '', id)
   schedulePersist()
-  toast('Note verrouillée')
+  toast('Note locked')
 }
 
 export async function unlockNote(id: string, pin: string): Promise<boolean> {
@@ -814,7 +814,7 @@ export async function unlockNote(id: string, pin: string): Promise<boolean> {
 
 export function lockAppNow() {
   if (!state.settings.pinHash) {
-    toast('Définis un code PIN dans Paramètres', 'warn')
+    toast('Set a PIN in Settings', 'warn')
     return
   }
   set({ appLocked: true, screen: 'library' })

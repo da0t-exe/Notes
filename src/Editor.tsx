@@ -3,10 +3,10 @@ import { EditorState, Compartment } from '@codemirror/state'
 import {
   EditorView,
   keymap,
-  lineNumbers,
   highlightActiveLine,
   drawSelection,
   rectangularSelection,
+  placeholder,
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search'
@@ -34,7 +34,7 @@ import {
   useStore,
 } from './store'
 import { HIGHLIGHT_MAX, PREVIEW_MAX, languageExtension } from './lib/languages'
-import { formatBytes, formatUpdated } from './lib/format'
+import { formatBytes, formatCreated, formatUpdated } from './lib/format'
 import { parseChecklist, renderMarkdown, serializeChecklist } from './lib/markdown'
 import { IconClose, IconGrip, IconImage, IconList, IconLock, IconPlus, IconSliders } from './icons'
 
@@ -52,9 +52,10 @@ function editorTheme(dark: boolean, fontSize: number) {
         height: '100%',
       },
       '.cm-content': {
-        fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+        fontFamily: '"Azeret Mono", ui-monospace, monospace',
+        fontWeight: '300',
         caretColor: dark ? '#fff' : '#111',
-        padding: '8px 18px 48px',
+        padding: '8px 16px 48px',
       },
       '.cm-gutters': {
         backgroundColor: 'transparent',
@@ -113,11 +114,11 @@ export function EditorPane({ note }: { note: Note }) {
     const state = EditorState.create({
       doc: getContent(note.id),
       extensions: [
-        lineNumbers(),
         highlightActiveLine(),
         drawSelection(),
         rectangularSelection(),
         history(),
+        placeholder('Type your note here...'),
         bracketMatching(),
         search(),
         highlightSelectionMatches(),
@@ -180,8 +181,17 @@ export function EditorPane({ note }: { note: Note }) {
 
   return (
     <>
+      <input
+        className="note-title"
+        value={note.title}
+        placeholder="Your title..."
+        onChange={(e) => setNoteTitle(note.id, e.target.value)}
+      />
+      <div className="updated">
+        {formatCreated(note.createdAt)}
+        {note.updatedAt !== note.createdAt ? ` · ${formatUpdated(note.updatedAt)}` : ''}
+      </div>
       <div className="meta-bar">
-        <div className="label">CATÉGORIES</div>
         {categories.map((c) => (
           <button
             key={c.id}
@@ -189,16 +199,16 @@ export function EditorPane({ note }: { note: Note }) {
             onClick={() => toggleNoteCategory(note.id, c.id)}
             type="button"
           >
-            {c.name.toUpperCase()}
+            {c.name}
             {note.categoryIds.includes(c.id) ? ' ×' : ''}
           </button>
         ))}
         <button
           className="plus"
           type="button"
-          title="Ajouter une catégorie"
+          title="Add category"
           onClick={async () => {
-            const name = await askText('Nouvelle catégorie', 'Nom de la catégorie')
+            const name = await askText('New category', 'Category name')
             if (!name) return
             const id = addCategory(name)
             if (id) toggleNoteCategory(note.id, id)
@@ -213,12 +223,12 @@ export function EditorPane({ note }: { note: Note }) {
           <div className="preview" dangerouslySetInnerHTML={{ __html: html }} />
         ) : null}
         {preview && !canPreview ? (
-          <div className="preview">Aperçu désactivé au-delà de {formatBytes(PREVIEW_MAX)}.</div>
+          <div className="preview">Preview disabled above {formatBytes(PREVIEW_MAX)}.</div>
         ) : null}
         {diff ? (
           <div className="diff">
             {note.size > PREVIEW_MAX ? (
-              'Diff désactivé pour ce volume.'
+              'Diff disabled for this file size.'
             ) : (
               diffRows.map((row, i) => (
                 <div key={i} className={`diff-line ${row.type}`}>
@@ -231,21 +241,21 @@ export function EditorPane({ note }: { note: Note }) {
         ) : null}
       </div>
       <div className="toolbar">
-        <button className="icon-btn" type="button" title="Liste / case à cocher" onClick={() => insertIntoActive('\n- [ ] ')}>
+        <button className="icon-btn" type="button" title="Checklist item" onClick={() => insertIntoActive('\n- [ ] ')}>
           <IconList />
         </button>
-        <button className="icon-btn" type="button" title="Insérer une image" onClick={() => void insertImage()}>
+        <button className="icon-btn" type="button" title="Insert image" onClick={() => void insertImage()}>
           <IconImage />
         </button>
-        <button className="icon-btn" type="button" title="Aperçu Markdown" onClick={togglePreview}>
+        <button className="icon-btn" type="button" title="Markdown preview" onClick={togglePreview}>
           <IconSliders />
         </button>
         <button
           className="icon-btn"
           type="button"
-          title="Verrouiller"
+          title="Lock"
           onClick={async () => {
-            const pin = await promptPin('Verrouiller cette note')
+            const pin = await promptPin('Lock this note')
             if (pin) void lockNote(note.id, pin)
           }}
         >
@@ -268,7 +278,7 @@ async function insertImage() {
     const file = input.files?.[0]
     if (!file) return
     if (file.size > 1_500_000) {
-      notify('Image trop lourde (max 1,5 Mo)', 'warn')
+      notify('Image too large (max 1.5 MB)', 'warn')
       return
     }
     const data = await fileToDataUrl(file)
@@ -298,13 +308,16 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
   return (
     <div className="checklist">
       <input
-        className="note-title serif"
+        className="note-title"
         value={note.title}
+        placeholder="Your title..."
         onChange={(e) => setNoteTitle(note.id, e.target.value)}
       />
-      <div className="updated">{formatUpdated(note.updatedAt)}</div>
+      <div className="updated">
+        {formatCreated(note.createdAt)}
+        {note.updatedAt !== note.createdAt ? ` · ${formatUpdated(note.updatedAt)}` : ''}
+      </div>
       <div className="meta-bar">
-        <div className="label">CATÉGORIES</div>
         {categories.map((c) => (
           <button
             key={c.id}
@@ -312,16 +325,16 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
             onClick={() => toggleNoteCategory(note.id, c.id)}
             type="button"
           >
-            {c.name.toUpperCase()}
+            {c.name}
             {note.categoryIds.includes(c.id) ? ' ×' : ''}
           </button>
         ))}
         <button
           className="plus"
           type="button"
-          title="Ajouter une catégorie"
+          title="Add category"
           onClick={async () => {
-            const name = await askText('Nouvelle catégorie', 'Nom de la catégorie')
+            const name = await askText('New category', 'Category name')
             if (!name) return
             const id = addCategory(name)
             if (id) toggleNoteCategory(note.id, id)
@@ -349,7 +362,7 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
             className="icon-btn"
             style={{ width: 22, height: 22, cursor: 'grab' }}
             type="button"
-            title="Réordonner"
+            title="Reorder"
             draggable
             onDragStart={() => setDrag(i)}
             onDragEnd={() => setDrag(null)}
@@ -368,19 +381,19 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
             value={it.text}
             onChange={(e) => write(items.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
           />
-          <button className="icon-btn" type="button" title="Supprimer l’élément" onClick={() => write(items.filter((_, j) => j !== i))}>
+          <button className="icon-btn" type="button" title="Delete item" onClick={() => write(items.filter((_, j) => j !== i))}>
             <IconClose />
           </button>
         </div>
       ))}
       <button className="add-item" type="button" onClick={() => write([...items, { text: '', done: false }])}>
-        + AJOUTER
+        Add item
       </button>
       <div className="toolbar">
         <button
           className="icon-btn"
           type="button"
-          title="Ajouter un élément"
+          title="Add item"
           onClick={() => write([...items, { text: '', done: false }])}
         >
           <IconList />
@@ -388,7 +401,7 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
         <button
           className="icon-btn"
           type="button"
-          title="Passer en Markdown"
+          title="Switch to Markdown"
           onClick={() => setNoteKind(note.id, 'markdown')}
         >
           <IconSliders />
@@ -397,9 +410,9 @@ function ChecklistNote({ note, content }: { note: Note; content: string }) {
         <button
           className="icon-btn"
           type="button"
-          title="Verrouiller"
+          title="Lock"
           onClick={async () => {
-            const pin = await promptPin('Verrouiller cette note')
+            const pin = await promptPin('Lock this note')
             if (pin) void lockNote(note.id, pin)
           }}
         >

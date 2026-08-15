@@ -220,17 +220,17 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .setup(|app| {
-      let file = SubmenuBuilder::new(app, "Fichier")
-        .text("new", "Nouvelle note")
-        .text("new-list", "Nouvelle liste")
+      let file = SubmenuBuilder::new(app, "File")
+        .text("new", "New note")
+        .text("new-list", "New list")
         .separator()
-        .text("open", "Ouvrir…")
-        .text("save", "Enregistrer")
-        .text("save-as", "Enregistrer sous…")
+        .text("open", "Open…")
+        .text("save", "Save")
+        .text("save-as", "Save as…")
         .separator()
         .quit()
         .build()?;
-      let edit = SubmenuBuilder::new(app, "Édition")
+      let edit = SubmenuBuilder::new(app, "Edit")
         .undo()
         .redo()
         .separator()
@@ -239,10 +239,10 @@ pub fn run() {
         .paste()
         .select_all()
         .separator()
-        .text("find", "Rechercher")
+        .text("find", "Find")
         .build()?;
-      let view = SubmenuBuilder::new(app, "Affichage")
-        .text("preview", "Aperçu Markdown")
+      let view = SubmenuBuilder::new(app, "View")
+        .text("preview", "Markdown preview")
         .text("diff", "Diff")
         .separator()
         .fullscreen()
@@ -258,5 +258,5 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![open_files, write_file, save_file_as])
     .run(tauri::generate_context!())
-    .expect("erreur au lancement de Notes");
+    .expect("failed to start Notes");
 }

@@ -3,32 +3,27 @@ export function uid(): string {
 }
 
 export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} o`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10 * 1024 ? 1 : 0)} Ko`
-  return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} Mo`
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10 * 1024 ? 1 : 0)} KB`
+  return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`
+}
+
+function formatPrettyDate(ts: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(ts))
 }
 
 export function formatUpdated(ts: number): string {
-  const d = new Date(ts)
-  const months = [
-    'JAN',
-    'FÉV',
-    'MAR',
-    'AVR',
-    'MAI',
-    'JUIN',
-    'JUIL',
-    'AOÛT',
-    'SEP',
-    'OCT',
-    'NOV',
-    'DÉC',
-  ]
-  const h = d.getHours()
-  const m = String(d.getMinutes()).padStart(2, '0')
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `MIS À JOUR : ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}, ${h12}:${m}${ampm}`
+  return `Updated: ${formatPrettyDate(ts)}`
+}
+
+export function formatCreated(ts: number): string {
+  return `Created: ${formatPrettyDate(ts)}`
 }
 
 export function previewText(text: string, max = 220): string {
