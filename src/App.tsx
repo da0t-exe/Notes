@@ -3,9 +3,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Drawer } from './components/Drawer'
 import { SwipeRow } from './components/SwipeRow'
 import { TitleBar } from './components/TitleBar'
+import { ChecklistEditor } from './editor/ChecklistEditor'
 import { EditorPane } from './editor/EditorPane'
 import { IconBack, IconClose, IconMenu, IconPanel, IconPin, IconPlus, IconPreview, IconTrash } from './icons'
 import { formatBytes } from './lib/format'
+import { parseList } from './lib/list'
 import { previewMarkdownHybrid } from './lib/markdown'
 import { isNative } from './lib/native'
 import type { Note } from './lib/types'
@@ -28,6 +30,7 @@ import {
   setScreen,
   setTheme,
   setWrap,
+  toggleNoteKind,
   togglePreview,
   toggleSidebar,
   trashNote,
@@ -75,7 +78,7 @@ function useShortcuts() {
         fn()
       }
 
-      if (meta && key === 'n') hit(() => newNote('markdown'))
+      if (meta && key === 'n') hit(() => newNote(e.shiftKey ? 'checklist' : 'markdown'))
       else if (meta && key === 'o') hit(() => void openFromDisk())
       else if (meta && e.shiftKey && key === 's') hit(() => void saveActiveAs())
       else if (meta && key === 's') hit(() => void saveActive())
@@ -255,7 +258,11 @@ function Shell() {
           <section className="editor-col">
             {active ? (
               <>
-                <EditorPane note={active} />
+                {active.kind === 'checklist' ? (
+                  <ChecklistEditor note={active} />
+                ) : (
+                  <EditorPane note={active} />
+                )}
                 <StatusBar note={active} />
               </>
             ) : (
@@ -300,9 +307,35 @@ function NoteCard({ note, active }: { note: Note; active: boolean }) {
           {note.dirty ? <span className="dot" title="Unsaved" /> : null}
         </span>
       </div>
-      {/* Escaped inside previewMarkdownHybrid before any markup is added. */}
-      {/* eslint-disable-next-line react/no-danger */}
-      <pre className="md-preview" dangerouslySetInnerHTML={{ __html: previewMarkdownHybrid(content) }} />
+      {note.kind === 'checklist' ? (
+        <ChecklistPreview note={note} content={content} />
+      ) : (
+        // Escaped inside previewMarkdownHybrid before any markup is added.
+        // eslint-disable-next-line react/no-danger
+        <pre className="md-preview" dangerouslySetInnerHTML={{ __html: previewMarkdownHybrid(content) }} />
+      )}
+    </div>
+  )
+}
+
+function ChecklistPreview({ note, content }: { note: Note; content: string }) {
+  const listType = note.listType ?? 'checklist'
+  const items = parseList(content, listType).slice(0, 6)
+
+  return (
+    <div className="checks">
+      {items.map((item, i) => (
+        <div className="check-row" key={item.id}>
+          {listType === 'checklist' ? (
+            <span className={`box ${item.done ? 'done' : ''}`}>{item.done ? '✓' : ''}</span>
+          ) : listType === 'numbered' ? (
+            <span className="list-index">{i + 1}.</span>
+          ) : (
+            <span className="bullet" />
+          )}
+          <span>{item.text}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -320,9 +353,16 @@ function StatusBar({ note }: { note: Note }) {
       <span>{note.language}</span>
       {note.fromDisk ? <span>{note.encoding.toUpperCase()}</span> : null}
       {note.fromDisk ? <span>{note.lineEnding}</span> : null}
-      <button type="button" onClick={() => setWrap(!wrap)}>
-        {wrap ? 'Wrap' : 'No wrap'}
-      </button>
+      {note.kind === 'checklist' ? null : (
+        <button type="button" onClick={() => setWrap(!wrap)}>
+          {wrap ? 'Wrap' : 'No wrap'}
+        </button>
+      )}
+      {note.fromDisk ? null : (
+        <button type="button" onClick={() => toggleNoteKind(note.id)}>
+          {note.kind === 'checklist' ? 'To note' : 'To list'}
+        </button>
+      )}
       <span style={{ flex: 1 }} />
       {note.dirty ? <span>Unsaved</span> : null}
       <button type="button" onClick={() => void saveActive()}>

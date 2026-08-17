@@ -18,8 +18,18 @@ import {
 import { formatBytes, titleFromContent, uid } from '../lib/format'
 import { idbDel, idbGet, idbGetAll, idbSet, kvGet, kvSet } from '../lib/idb'
 import { kindFromName, languageLabel } from '../lib/languages'
+import { parseList, serializeList } from '../lib/list'
 import { bootNative, isNative } from '../lib/native'
-import type { LoadProgress, NativeFile, Note, NoteKind, Screen, Settings, Toast } from '../lib/types'
+import type {
+  ListType,
+  LoadProgress,
+  NativeFile,
+  Note,
+  NoteKind,
+  Screen,
+  Settings,
+  Toast,
+} from '../lib/types'
 
 export { bootNative, isNative }
 
@@ -302,6 +312,49 @@ export function setScreen(screen: Screen) {
   set({ screen })
 }
 
+/* ------------------------------------------------------------ list kind -- */
+
+/**
+ * Switches between checklist / bulleted / numbered. The items are parsed with
+ * the outgoing marker and rewritten with the incoming one, so nothing is lost
+ * in the change — `parseList` keeps unmarked lines as bare items for exactly
+ * this reason.
+ */
+export function setListType(id: string, listType: ListType) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
+  const items = parseList(getContent(id), note.listType ?? 'checklist')
+  set({ notes: state.notes.map((n) => (n.id === id ? { ...n, listType, kind: 'checklist' } : n)) })
+  setNoteContent(id, serializeList(items, listType))
+}
+
+/** Flips a note between prose and a list, keeping the text either way. */
+export function toggleNoteKind(id: string) {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return
+
+  if (note.kind === 'checklist') {
+    set({
+      notes: state.notes.map((n) =>
+        n.id === id ? { ...n, kind: 'markdown', language: languageLabel(n.fileName, 'markdown') } : n,
+      ),
+    })
+    schedulePersist(id)
+    return
+  }
+
+  const listType = note.listType ?? 'checklist'
+  const items = parseList(getContent(id), listType)
+  set({
+    notes: state.notes.map((n) =>
+      n.id === id
+        ? { ...n, kind: 'checklist', listType, language: languageLabel(null, 'checklist') }
+        : n,
+    ),
+  })
+  setNoteContent(id, items.length ? serializeList(items, listType) : '- [ ] ')
+}
+
 /* ------------------------------------------------------------------ pin -- */
 
 export function pinNote(id: string) {
@@ -472,7 +525,9 @@ export async function confirmQuit(): Promise<boolean> {
 export function newNote(kind: NoteKind = 'markdown') {
   const id = uid()
   const now = Date.now()
+  const starter = kind === 'checklist' ? '- [ ] ' : ''
   const note: Note = {
+    ...(kind === 'checklist' ? { listType: 'checklist' as ListType } : {}),
     id,
     title: '',
     kind,
@@ -480,19 +535,19 @@ export function newNote(kind: NoteKind = 'markdown') {
     updatedAt: now,
     fromDisk: false,
     dirty: true,
-    size: 0,
+    size: starter.length,
     pinned: false,
     locked: false,
     encoding: 'utf-8',
     lineEnding: 'LF',
-    fileName: kind === 'markdown' ? 'untitled.md' : 'untitled.txt',
+    fileName: kind === 'markdown' ? 'untitled.md' : kind === 'text' ? 'untitled.txt' : null,
     filePath: null,
     language: languageLabel(kind === 'markdown' ? 'n.md' : null, kind),
   }
   set({
     notes: [note, ...state.notes],
-    contents: { ...state.contents, [id]: '' },
-    originals: { ...state.originals, [id]: '' },
+    contents: { ...state.contents, [id]: starter },
+    originals: { ...state.originals, [id]: starter },
   })
   openTab(id)
   schedulePersist(id)

@@ -29,12 +29,13 @@ Windows only. No telemetry, no network access — the app declares a
 content-security policy that permits none.
 
 - Swipe a note sideways to pin it or send it to the trash
+- Checklists, bulleted and numbered lists, convertible to and from prose
 
 ## Status
 
 v0.4 is a rebuild. Working today: opening, editing, saving, search, Markdown
-preview, pinning, trash and persistence. Not yet reimplemented from v0.3:
-checklists and per-note password locking.
+preview, checklists, pinning, trash and persistence. Not yet reimplemented
+from v0.3: per-note password locking.
 
 Categories were dropped on purpose — in a flat personal note list they
 duplicated search.
@@ -44,6 +45,7 @@ duplicated search.
 | | |
 |---|---|
 | `Ctrl+N` | New note |
+| `Ctrl+Shift+N` | New checklist |
 | `Ctrl+O` | Open file |
 | `Ctrl+S` / `Ctrl+Shift+S` | Save / Save as |
 | `Ctrl+W` | Close |
