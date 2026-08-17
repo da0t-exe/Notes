@@ -2,7 +2,12 @@ import type { SVGProps } from 'react'
 
 type P = SVGProps<SVGSVGElement>
 
-function I({ d, box = '0 0 24 24', children, ...p }: P & { d?: string; box?: string }) {
+// `d` and `box` are written `| undefined` rather than plain optional because
+// SVGProps already declares `d`, and under exactOptionalPropertyTypes the
+// spread would otherwise widen it past this signature.
+type IconProps = P & { d?: string | undefined; box?: string | undefined }
+
+function I({ d, box = '0 0 24 24', children, ...p }: IconProps) {
   return (
     <svg {...p} viewBox={box}>
       {d ? <path d={d} /> : children}

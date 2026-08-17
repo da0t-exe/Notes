@@ -8,6 +8,7 @@
   },
   "rules": {
     "react/rules-of-hooks": "error",
+    "react/react-in-jsx-scope": "off",
     "react/exhaustive-deps": "error",
     "react/no-danger": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
