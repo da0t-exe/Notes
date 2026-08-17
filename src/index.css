@@ -660,11 +660,13 @@ button {
   font-size: 14px;
 }
 
+/* Bottom-left, where the collapsed sidebar leaves the corner free — the note
+   FAB that normally sits down there is hidden in this state. It is the only
+   chrome for the panel: Ctrl+B closes it, this brings it back. */
 .rail-open {
   position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 16px;
+  bottom: 16px;
   width: 40px;
   height: 40px;
   border-radius: 12px;

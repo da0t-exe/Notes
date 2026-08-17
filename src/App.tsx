@@ -5,7 +5,7 @@ import { SwipeRow } from './components/SwipeRow'
 import { TitleBar } from './components/TitleBar'
 import { ChecklistEditor } from './editor/ChecklistEditor'
 import { EditorPane } from './editor/EditorPane'
-import { IconBack, IconClose, IconMenu, IconPanel, IconPin, IconPlus, IconPreview, IconTrash } from './icons'
+import { IconBack, IconClose, IconMenu, IconPanel, IconPin, IconPlus, IconTrash } from './icons'
 import { formatBytes } from './lib/format'
 import { parseList } from './lib/list'
 import { previewMarkdown } from './lib/preview'
@@ -122,7 +122,6 @@ function Shell() {
   const sidebar = useStore((s) => s.sidebar)
   const contents = useStore((s) => s.contents)
   const trash = useStore((s) => s.trash)
-  const preview = useStore((s) => s.preview)
 
   const [drawer, setDrawer] = useState(false)
   const [query, setQuery] = useState('')
@@ -179,26 +178,7 @@ function Shell() {
 
         <h1 className="headline">{inLibrary ? (active?.title ?? 'Notes') : 'Trash'}</h1>
 
-        {inLibrary ? (
-          <>
-            <button
-              className={`icon-btn ${sidebar ? 'on' : ''}`}
-              type="button"
-              title={sidebar ? 'Hide notes (Ctrl+B)' : 'Show notes (Ctrl+B)'}
-              onClick={toggleSidebar}
-            >
-              <IconPanel />
-            </button>
-            <button
-              className={`icon-btn ${preview ? 'on' : ''}`}
-              type="button"
-              title="Markdown preview (Alt+P)"
-              onClick={togglePreview}
-            >
-              <IconPreview />
-            </button>
-          </>
-        ) : trash.length > 0 ? (
+        {!inLibrary && trash.length > 0 ? (
           <button className="icon-btn" type="button" title="Empty trash" onClick={() => void emptyTrash()}>
             <IconTrash />
           </button>
