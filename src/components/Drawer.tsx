@@ -6,6 +6,7 @@ import { setScreen, useStore } from '../store'
 const ITEMS: { label: string; screen: Screen }[] = [
   { label: 'Notes', screen: 'library' },
   { label: 'Trash', screen: 'trash' },
+  { label: 'Settings', screen: 'settings' },
 ]
 
 /**

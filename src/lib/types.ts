@@ -2,7 +2,7 @@ export type Theme = 'dark' | 'light' | 'system'
 export type NoteKind = 'text' | 'markdown' | 'checklist'
 export type ListType = 'checklist' | 'bulleted' | 'numbered'
 export type LineEnding = 'LF' | 'CRLF' | 'CR'
-export type Screen = 'library' | 'trash'
+export type Screen = 'library' | 'trash' | 'settings'
 
 /**
  * A note is either stored in IndexedDB (`fromDisk: false`) or is a view onto a

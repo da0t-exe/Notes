@@ -2048,3 +2048,60 @@ button {
   height: 0;
   display: none;
 }
+
+/* ----------------------------------------------------------- settings -- */
+
+.theme-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+/* The v0.3 circles were 148px because they owned a screen of their own. Here
+   they share the page with other rows, so they scale to fit three across. */
+.theme-row .theme-circle {
+  flex: 1;
+  height: 104px;
+  border-radius: 20px;
+  min-width: 0;
+}
+
+.option .desc {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.stepper .icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.stepper .icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.stepper .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper .icon-btn:disabled:hover {
+  background: none;
+  color: var(--on-bg);
+}
+
+.stepper-value {
+  min-width: 26px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--on-bg);
+}

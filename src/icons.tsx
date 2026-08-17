@@ -31,6 +31,7 @@ export const IconGear = (p: P) => (
 )
 export const IconBack = (p: P) => <I d="M15 5 8 12l7 7" {...p} />
 export const IconPlus = (p: P) => <I d="M12 5v14M5 12h14" {...p} />
+export const IconMinus = (p: P) => <I d="M5 12h14" {...p} />
 export const IconClose = (p: P) => <I d="M6 6l12 12M18 6 6 18" {...p} />
 export const IconList = (p: P) => <I d="M9 7h11M9 12h11M9 17h11M5 7h.01M5 12h.01M5 17h.01" {...p} />
 export const IconImage = (p: P) => (

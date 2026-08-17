@@ -11,6 +11,7 @@ import { parseList } from './lib/list'
 import { previewMarkdown } from './lib/preview'
 import { isNative } from './lib/native'
 import type { Note } from './lib/types'
+import { SettingsScreen } from './screens/Settings'
 import { TrashScreen } from './screens/Trash'
 import {
   activateTab,
@@ -176,9 +177,11 @@ function Shell() {
           </button>
         )}
 
-        <h1 className="headline">{inLibrary ? (active?.title ?? 'Notes') : 'Trash'}</h1>
+        <h1 className="headline">
+          {inLibrary ? (active?.title ?? 'Notes') : screen === 'trash' ? 'Trash' : 'Settings'}
+        </h1>
 
-        {!inLibrary && trash.length > 0 ? (
+        {screen === 'trash' && trash.length > 0 ? (
           <button className="icon-btn" type="button" title="Empty trash" onClick={() => void emptyTrash()}>
             <IconTrash />
           </button>
@@ -190,6 +193,10 @@ function Shell() {
       {screen === 'trash' ? (
         <div className="screen-in">
           <TrashScreen />
+        </div>
+      ) : screen === 'settings' ? (
+        <div className="screen-in">
+          <SettingsScreen />
         </div>
       ) : (
         <div className={`workspace ide screen-in ${sidebar ? '' : 'collapsed'}`}>
