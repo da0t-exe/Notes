@@ -11,6 +11,7 @@
     "app": "tauri dev",
     "build": "tsc --noEmit && vite build",
     "dist": "tauri build",
+    "dist:appinstaller": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pack-appinstaller.ps1",
     "tauri": "tauri",
     "lint": "oxlint",
     "test": "vitest run",
