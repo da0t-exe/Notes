@@ -1981,4 +1981,11 @@ button {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* A blink is a looping animation, so collapsing its duration turns it into a
+     strobe rather than stopping it. Reduced motion means a caret that does not
+     blink at all. */
+  .cm-cursorLayer {
+    animation: none !important;
+  }
 }

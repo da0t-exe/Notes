@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { Drawer } from './components/Drawer'
 import { SwipeRow } from './components/SwipeRow'
@@ -327,7 +327,7 @@ function ChecklistPreview({ note, content }: { note: Note; content: string }) {
       {items.map((item, i) => (
         <div className="check-row" key={item.id}>
           {listType === 'checklist' ? (
-            <span className={`box ${item.done ? 'done' : ''}`}>{item.done ? 'âœ“' : ''}</span>
+            <span className={`box ${item.done ? 'done' : ''}`}>{item.done ? '✓' : ''}</span>
           ) : listType === 'numbered' ? (
             <span className="list-index">{i + 1}.</span>
           ) : (
@@ -384,7 +384,7 @@ function Overlays() {
     <>
       {progress ? (
         <div className="progress">
-          {progress.name} Â· {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
+          {progress.name} · {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
         </div>
       ) : null}
 

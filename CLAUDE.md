@@ -107,6 +107,18 @@ This surfaced the moment the unsaved-changes guard was added.
 **Vite must not watch `src-tauri`.** Cargo rewrites build artifacts there while
 the dev server is live and chokidar dies with EBUSY. Handled in `vite.config.ts`.
 
+**Never round-trip a source file through PowerShell 5.1.** `Get-Content` reads
+with the system ANSI codepage when a file has no BOM, so
+`(Get-Content f) -replace … | Set-Content f` silently rewrites every non-ASCII
+character as mojibake — `✓` came back as `âœ"` and shipped that way — and
+`Set-Content -Encoding utf8` then prepends a BOM. Use the Edit tool, or
+`[System.IO.File]::ReadAllText/WriteAllText` with an explicit
+`UTF8Encoding($false)`.
+
+**Reduced motion must stop a blink, not shorten it.** The blanket
+`animation-duration: 0.01ms` under `prefers-reduced-motion` turned CodeMirror's
+caret into a strobe; looping animations need `animation: none` instead.
+
 ## Conventions
 
 - **Commits**: one logical change each, imperative mood, and `npm run check`
