@@ -691,9 +691,11 @@ button {
   background: var(--surface);
 }
 
-/* Cleared above the status bar when one is present, keeping the same 16px it
-   holds from the left edge. With no note open there is no bar to clear. */
-.workspace:has(.status) .rail-open {
+/* The status bar belongs to the editor column, not the sidebar — so the button
+   only has to clear it in the collapsed state, where it actually sits over the
+   editor. With the panel open it hangs over the sidebar and takes the plain
+   16px, level with the note FAB. */
+.workspace.collapsed:has(.status) .rail-open {
   bottom: calc(var(--status-h) + 16px);
 }
 
@@ -856,8 +858,10 @@ button {
 
 .sidebar-fab {
   position: absolute;
-  right: 17px;
-  bottom: 17px;
+  /* 16, so it shares a baseline with the panel button on the other side and
+     matches the 16 used everywhere else. */
+  right: 16px;
+  bottom: 16px;
   margin: 0;
   width: 78px;
   height: 78px;
