@@ -28,28 +28,3 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   }
 })
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-/**
- * The card preview: markers stay visible but get styled, so a note reads the
- * same in the list as in the editor. Escapes first, so the output carries no
- * markup beyond the spans added here and is safe to inject directly.
- */
-export function previewMarkdownHybrid(text: string, maxLines = 7): string {
-  return text
-    .split(/\r?\n/)
-    .slice(0, maxLines)
-    .map((line) => {
-      let html = escapeHtml(line)
-      html = html.replace(/^(#{1,6})(\s+)(.*)$/, '<span class="md-h">$1$2$3</span>')
-      html = html.replace(/`([^`]+)`/g, '<code>`$1`</code>')
-      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>**$1**</strong>')
-      html = html.replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<strong>*$2*</strong>')
-      html = html.replace(/_([^_]+)_/g, '<em>_$1_</em>')
-      html = html.replace(/~([^~]+)~/g, '<s>~$1</s>')
-      return html || '<br>'
-    })
-    .join('\n')
-}

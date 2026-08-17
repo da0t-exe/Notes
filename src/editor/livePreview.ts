@@ -43,14 +43,16 @@ function build(view: EditorView): DecorationSet {
   const { state } = view
   const ranges: Range<Decoration>[] = []
 
-  // Every line the selection touches keeps its raw source, so what you are
-  // editing is always the real text.
-  const editing = new Set<number>()
-  for (const r of state.selection.ranges) {
-    const first = state.doc.lineAt(r.from).number
-    const last = state.doc.lineAt(r.to).number
-    for (let n = first; n <= last; n++) editing.add(n)
-  }
+  /**
+   * True when the selection touches this construct.
+   *
+   * Scoped to the construct rather than to its line: putting the caret in a
+   * paragraph should reveal the emphasis you are actually inside, not every
+   * marker that happens to share the line. Touching the edges counts, so the
+   * closing marker is reachable from just after the word.
+   */
+  const touched = (from: number, to: number) =>
+    state.selection.ranges.some((r) => r.from <= to && r.to >= from)
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
@@ -63,15 +65,18 @@ function build(view: EditorView): DecorationSet {
         }
 
         if (node.to === node.from) return
-        if (!hideable(node.name, node.node.parent?.name)) return
+        const parent = node.node.parent
+        if (!hideable(node.name, parent?.name)) return
 
-        const line = state.doc.lineAt(node.from)
-        if (editing.has(line.number)) return
+        // The construct owns the reveal, not the marker: entering "bold" has to
+        // bring back both of its asterisks, not only the one you are next to.
+        if (touched(parent?.from ?? node.from, parent?.to ?? node.to)) return
 
         // Swallow the space after a heading's hashes too, otherwise the title
         // renders indented by exactly the marker that was meant to disappear.
         let end = node.to
         if (node.name === 'HeaderMark') {
+          const line = state.doc.lineAt(node.from)
           while (end < line.to && state.doc.sliceString(end, end + 1) === ' ') end++
         }
         ranges.push(hide.range(node.from, end))
@@ -118,7 +123,14 @@ export const livePreviewTheme = EditorView.baseTheme({
     fontFamily: '"NType82 Headline", serif',
     fontWeight: '400',
     lineHeight: '1.3',
+    // The syntax highlighter paints headings red. Size and face already say
+    // "heading"; the colour only made titles look like errors.
+    color: 'inherit',
   },
+  // The highlighter styles spans nested inside the heading, so the reset has
+  // to reach them too.
+  '.cm-md-h1 span, .cm-md-h2 span, .cm-md-h3 span, .cm-md-h4 span, .cm-md-h5 span, .cm-md-h6 span':
+    { color: 'inherit' },
   '.cm-md-h1': { fontSize: '1.7em' },
   '.cm-md-h2': { fontSize: '1.45em' },
   '.cm-md-h3': { fontSize: '1.25em' },

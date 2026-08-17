@@ -13,8 +13,15 @@ export function editorTheme(dark: boolean, fontSize: number) {
         fontFamily: '"Azeret Mono", ui-monospace, monospace',
         fontWeight: '300',
         color: dark ? '#f0f2f1' : '#111',
-        caretColor: dark ? '#f0f2f1' : '#111',
+        // drawSelection() renders its own caret as .cm-cursor. Colouring the
+        // native one here left both on screen, blinking out of phase, which
+        // reads as one caret flickering.
+        caretColor: 'transparent',
         padding: '8px 16px 120px',
+      },
+      '.cm-cursor, .cm-dropCursor': {
+        borderLeftColor: dark ? '#f0f2f1' : '#111',
+        borderLeftWidth: '2px',
       },
       '.cm-line': { color: dark ? '#f0f2f1' : '#111' },
       '.cm-header, .tok-header': {

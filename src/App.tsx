@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 
 import { Drawer } from './components/Drawer'
 import { SwipeRow } from './components/SwipeRow'
@@ -8,7 +8,7 @@ import { EditorPane } from './editor/EditorPane'
 import { IconBack, IconClose, IconMenu, IconPanel, IconPin, IconPlus, IconPreview, IconTrash } from './icons'
 import { formatBytes } from './lib/format'
 import { parseList } from './lib/list'
-import { previewMarkdownHybrid } from './lib/markdown'
+import { previewMarkdown } from './lib/preview'
 import { isNative } from './lib/native'
 import type { Note } from './lib/types'
 import { TrashScreen } from './screens/Trash'
@@ -310,9 +310,9 @@ function NoteCard({ note, active }: { note: Note; active: boolean }) {
       {note.kind === 'checklist' ? (
         <ChecklistPreview note={note} content={content} />
       ) : (
-        // Escaped inside previewMarkdownHybrid before any markup is added.
+        // Escaped inside previewMarkdown before any markup is added.
         // eslint-disable-next-line react/no-danger
-        <pre className="md-preview" dangerouslySetInnerHTML={{ __html: previewMarkdownHybrid(content) }} />
+        <pre className="md-preview" dangerouslySetInnerHTML={{ __html: previewMarkdown(content) }} />
       )}
     </div>
   )
@@ -327,7 +327,7 @@ function ChecklistPreview({ note, content }: { note: Note; content: string }) {
       {items.map((item, i) => (
         <div className="check-row" key={item.id}>
           {listType === 'checklist' ? (
-            <span className={`box ${item.done ? 'done' : ''}`}>{item.done ? '✓' : ''}</span>
+            <span className={`box ${item.done ? 'done' : ''}`}>{item.done ? 'âœ“' : ''}</span>
           ) : listType === 'numbered' ? (
             <span className="list-index">{i + 1}.</span>
           ) : (
@@ -384,7 +384,7 @@ function Overlays() {
     <>
       {progress ? (
         <div className="progress">
-          {progress.name} · {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
+          {progress.name} Â· {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
         </div>
       ) : null}
 
