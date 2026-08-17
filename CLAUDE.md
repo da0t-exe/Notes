@@ -67,6 +67,18 @@ corresponding guard here:
 | `tsconfig` had no `strict` | `strict` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` on |
 | French strings left in an English UI | UI copy is English; French exists only in conversation |
 
+## Platform notes
+
+**Window close needs two permissions.** Registering `onCloseRequested` changes
+how a window shuts down: `close()` only emits the request, and the JS runtime
+calls `destroy()` afterwards to actually close it. So the capability list needs
+`core:window:allow-close` *and* `core:window:allow-destroy`. With only the
+first, the titlebar close button silently rejects and the app cannot be closed.
+This surfaced the moment the unsaved-changes guard was added.
+
+**Vite must not watch `src-tauri`.** Cargo rewrites build artifacts there while
+the dev server is live and chokidar dies with EBUSY. Handled in `vite.config.ts`.
+
 ## Conventions
 
 - **Commits**: one logical change each, imperative mood, and `npm run check`
