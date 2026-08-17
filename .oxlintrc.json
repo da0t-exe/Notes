@@ -14,6 +14,8 @@
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
     "typescript/no-explicit-any": "error",
     "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-await-in-loop": "off",
+    "oxc/no-map-spread": "off",
     "eqeqeq": ["error", "smart"]
   },
   "ignorePatterns": ["dist", "src-tauri/target", "src-tauri/gen"]
