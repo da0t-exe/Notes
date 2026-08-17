@@ -29,12 +29,32 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "startMenuFolder": "Notes",
+        "languages": [
+          "English"
+        ],
+        "displayLanguageSelector": false,
+        "compression": "lzma"
       }
-    }
+    },
+    "publisher": "da0t-exe",
+    "copyright": "Copyright (c) 2026 da0t-exe. MIT licensed.",
+    "category": "Productivity",
+    "shortDescription": "A minimalist native text editor for Windows.",
+    "longDescription": "Notes opens any text file, detects its encoding and line endings, and shows Markdown syntax only on the line you are editing. Checklists, pinning and a recoverable trash for the notes it keeps itself. No telemetry, no network access.",
+    "homepage": "https://github.com/da0t-exe/Notes",
+    "licenseFile": "../LICENSE"
   }
 }

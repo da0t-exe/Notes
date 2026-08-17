@@ -57,15 +57,14 @@ security policy that permits none.
 
 ## Install
 
-Grab the latest build from [**Releases**](https://github.com/da0t-exe/Notes/releases/latest):
+Download **`Notes_x.y.z_x64-setup.exe`** from
+[Releases](https://github.com/da0t-exe/Notes/releases/latest) and run it. It
+installs for the current user, so Windows never asks for admin rights, and it
+adds a Start menu entry and an uninstaller like any other app.
 
-| | |
-|---|---|
-| **`Notes_x.y.z_x64-setup.exe`** | Standard installer. Installs for the current user, no admin needed. |
-| **`Notes.appinstaller`** | Auto-updating install. Keep the `.msix` beside it, or install straight from the release page. |
-
-The MSIX is signed with a self-signed certificate, so Windows will ask you to
-trust it once. The `.exe` installer needs no such step.
+The installer is not code-signed — a certificate costs more than this project
+does — so SmartScreen shows a warning the first time. Choose **More info**, then
+**Run anyway**. Everything after that is a normal install.
 
 ## Shortcuts
 

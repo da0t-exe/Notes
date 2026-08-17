@@ -3,6 +3,13 @@
 
   Run `npm run dist` first — this consumes the release exe, it does not build it.
 
+  NOT FOR PUBLIC DISTRIBUTION AS-IS. A self-signed certificate makes the package
+  installable only on machines where someone has first trusted the certificate's
+  root, and a root certificate can vouch for anything on that machine — it is not
+  reasonable to ask a stranger to install one. Windows rejects the package with
+  0x8000010A otherwise. Releases ship the NSIS installer instead; this path needs
+  a real code-signing certificate to be worth publishing.
+
   The signing certificate never lives in this repository. Point NOTES_PFX at it
   and put its password in NOTES_PFX_PASSWORD:
 
