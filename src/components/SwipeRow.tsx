@@ -37,10 +37,13 @@ function icon(tone: SwipeAction['tone']) {
 export function SwipeRow({
   left,
   right,
+  onTap,
   children,
 }: {
   left?: SwipeAction
   right?: SwipeAction
+  /** Fires when the row is pressed and released without being dragged. */
+  onTap?: () => void
   children: ReactNode
 }) {
   const [x, setX] = useState(0)
@@ -49,6 +52,7 @@ export function SwipeRow({
   const origin = useRef<number | null>(null)
   const startOffset = useRef(0)
   const moved = useRef(false)
+  const captured = useRef<number | null>(null)
   const wrap = useRef<HTMLDivElement>(null)
 
   const open = Math.abs(x) >= REVEAL - 1
@@ -83,8 +87,10 @@ export function SwipeRow({
     origin.current = e.clientX - offset.current
     startOffset.current = offset.current
     moved.current = false
-    setDragging(true)
-    capture(e.currentTarget, e.pointerId, true)
+    // Deliberately no pointer capture here. Capturing retargets the click that
+    // ends the gesture onto this element, and events do not travel down to
+    // children — so the card underneath would never be clickable. Capture is
+    // taken in move(), once the pointer has actually committed to a drag.
   }
 
   function move(e: PointerEvent<HTMLDivElement>) {
@@ -97,6 +103,11 @@ export function SwipeRow({
     if (!moved.current) {
       if (!isDrag(raw, startOffset.current)) return
       moved.current = true
+      setDragging(true)
+      // Now that this is a drag, hold the pointer so it keeps reporting even
+      // if it leaves the row.
+      capture(e.currentTarget, e.pointerId, true)
+      captured.current = e.pointerId
     }
 
     settle(clampDrag(raw, Boolean(left), Boolean(right)))
@@ -106,7 +117,21 @@ export function SwipeRow({
     if (origin.current === null) return
     origin.current = null
     setDragging(false)
-    capture(e.currentTarget, e.pointerId, false)
+    if (captured.current !== null) {
+      capture(e.currentTarget, captured.current, false)
+      captured.current = null
+    }
+
+    // Activation runs from here rather than from a click handler. Pointer
+    // capture retargets the click that ends a gesture onto whichever element
+    // holds the capture, and events never travel down to children — so a card
+    // nested under the capture target can silently stop being clickable.
+    // Resolving the gesture ourselves removes that whole class of problem.
+    if (!moved.current) {
+      if (offset.current === 0) onTap?.()
+      else settle(0) // a press on an open row closes it instead
+      return
+    }
 
     settle(snapTarget(offset.current, Boolean(left), Boolean(right)))
   }
@@ -160,12 +185,12 @@ export function SwipeRow({
         onPointerUp={up}
         onPointerCancel={up}
         onClickCapture={(e) => {
-          // Swallow the click that ends a drag, and the one that closes an
-          // open row, so neither opens the note underneath.
-          if (moved.current || offset.current !== 0) {
+          // Taps are resolved on pointerup, so the click that trails a gesture
+          // is redundant here. Swallow it unless it belongs to a real control
+          // inside the row.
+          if (!(e.target as HTMLElement).closest('button, a, input, textarea')) {
             e.stopPropagation()
             e.preventDefault()
-            if (!moved.current) settle(0)
           }
         }}
       >

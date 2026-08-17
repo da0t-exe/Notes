@@ -227,6 +227,7 @@ function Shell() {
                 visible.map((note) => (
                   <SwipeRow
                     key={note.id}
+                    onTap={() => activateTab(note.id)}
                     left={{
                       label: note.pinned ? 'Unpin' : 'Pin',
                       tone: 'pin',
@@ -283,9 +284,13 @@ function NoteCard({ note, active }: { note: Note; active: boolean }) {
       className={`note-card ${active ? 'active' : ''}`}
       role="button"
       tabIndex={0}
-      onClick={() => activateTab(note.id)}
+      // Pointer activation is handled by the enclosing SwipeRow's onTap. This
+      // covers the keyboard, which has no gesture to resolve.
       onKeyDown={(e) => {
-        if (e.key === 'Enter') activateTab(note.id)
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          activateTab(note.id)
+        }
       }}
     >
       <div className="note-card-head">
