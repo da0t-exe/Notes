@@ -17,10 +17,13 @@
 
 ## What it does
 
-- Opens text, code and log files with automatic encoding and line-ending detection
+- Opens any text file — nothing is restricted by extension — with automatic
+  encoding and line-ending detection
 - Syntax highlighting for 25 languages, dropped automatically past 1.5 MB so large
   files stay responsive
-- Live Markdown preview, sanitised before rendering
+- Markdown shows its syntax only on the line you are editing; every other line
+  reads as the rendered result
+- Split Markdown preview on `Alt+P`, sanitised before rendering
 - Streams files over 2 MB so the window keeps painting while they load
 - Prompts before closing a tab or quitting with unsaved edits
 - Notes are stored locally in IndexedDB; files on disk are edited in place

@@ -19,6 +19,7 @@ import { languageExtension } from '../lib/languages'
 import { renderMarkdown } from '../lib/markdown'
 import type { Note } from '../lib/types'
 import { getContent, markDirty, registerView, setCursor, unregisterView, useStore } from '../store'
+import { livePreview, livePreviewTheme } from './livePreview'
 import { editorTheme } from './theme'
 
 const wrapComp = new Compartment()
@@ -70,6 +71,10 @@ export function EditorPane({ note }: { note: Note }) {
           langComp.of(
             lang ? [lang, syntaxHighlighting(dark ? oneDarkHighlightStyle : defaultHighlightStyle)] : [],
           ),
+          // Markdown reads as rendered text except on the line being edited.
+          // Skipped past the highlight ceiling, where walking the syntax tree
+          // on every selection change would cost more than it is worth.
+          ...(note.kind === 'markdown' && !large ? [livePreview, livePreviewTheme] : []),
           wrapComp.of(wrap ? EditorView.lineWrapping : []),
           themeComp.of(editorTheme(dark, fontSize)),
           EditorView.updateListener.of((u) => {

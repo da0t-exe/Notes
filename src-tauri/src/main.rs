@@ -198,18 +198,23 @@ async fn open_files(
     handle
       .dialog()
       .file()
+      // All files first, deliberately. Nothing in the pipeline restricts what
+      // can be opened — read_opened takes any path, sniffs the encoding and
+      // flags binaries — so leading with a nine-extension filter only hid
+      // openable files behind a dropdown.
+      .add_filter("All files", &["*"])
       .add_filter(
         "Text documents",
-        &["txt", "md", "markdown", "log", "csv", "json", "xml", "yml", "yaml"],
+        &["txt", "md", "markdown", "log", "csv", "tsv", "json", "xml", "yml", "yaml", "toml", "ini", "conf"],
       )
       .add_filter(
         "Code",
         &[
-          "js", "ts", "tsx", "jsx", "py", "rs", "go", "java", "c", "cpp", "h", "cs", "html", "css",
-          "php", "sql", "sh", "ps1", "toml",
+          "js", "mjs", "cjs", "jsx", "ts", "tsx", "py", "rs", "go", "java", "kt", "c", "cpp", "h",
+          "hpp", "cs", "html", "css", "scss", "php", "rb", "sql", "sh", "bash", "ps1", "lua", "vue",
+          "svelte", "swift", "r",
         ],
       )
-      .add_filter("All files", &["*"])
       .blocking_pick_files()
   })
   .await

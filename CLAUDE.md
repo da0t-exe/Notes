@@ -53,6 +53,19 @@ instead. This was the single biggest incoherence in v0.3; do not reintroduce it.
 duplicated what search already does in a flat, personal note list. Do not add
 them back without a reason that search does not cover.
 
+## Editing
+
+**Any text file opens.** Nothing in the pipeline filters by extension —
+`read_opened` takes any path, sniffs the encoding and flags binaries — so the
+open dialog leads with "All files". An unknown extension simply gets no syntax
+highlighting; it still edits.
+
+**Markdown hides its own syntax** (`editor/livePreview.ts`). Markers are
+replaced by decorations on every line except the one the caret is on, which
+keeps its raw source. Structural markers — list bullets, quote arrows — stay
+visible, and markers that own a whole line (fenced-code backticks, setext
+underlines) are never hidden, since blanking them would leave an empty line.
+
 ## Interaction
 
 Row actions live behind a horizontal swipe (`SwipeRow`), not in always-visible
