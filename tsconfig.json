@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+
+    /* Type safety — the v0.3 tree ran without `strict`, which is how a
+       number of unwired code paths went unnoticed. Everything below stays on. */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

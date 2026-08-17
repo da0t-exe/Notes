@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/
+
+# Packaging and signing material — never commit private keys
+packaging/
+*.pfx
+*.cer
+*.msix
+*.appinstaller
+*.exe
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.cursor/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local overrides
+*.local
+.env
+.env.*
+!.env.example

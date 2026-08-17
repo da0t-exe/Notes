@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc", "unicorn"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "react/no-danger": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "typescript/no-explicit-any": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "eqeqeq": ["error", "smart"]
+  },
+  "ignorePatterns": ["dist", "src-tauri/target", "src-tauri/gen"]
+}
