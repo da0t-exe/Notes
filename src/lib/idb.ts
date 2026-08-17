@@ -20,11 +20,17 @@ function openDb(): Promise<IDBDatabase> {
       }
     }
     req.onsuccess = () => {
-      // A version change from another tab invalidates this handle.
-      req.result.onclose = () => {
+      const db = req.result
+      // Holding the connection open is what makes reads cheap, but it also
+      // blocks deleteDatabase and any upgrade from another tab until we let go.
+      db.onversionchange = () => {
+        db.close()
         connection = null
       }
-      resolve(req.result)
+      db.onclose = () => {
+        connection = null
+      }
+      resolve(db)
     }
     req.onerror = () => {
       connection = null
