@@ -1,12 +1,6 @@
-# Logs
 logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
 node_modules
 dist
 dist-ssr
@@ -18,13 +12,10 @@ packaging
 *.exe
 *.msix
 *.appinstaller
-
-# Local / generated
 .cursor/
 public/icon-proposed.svg
 src-tauri/gen/
-
-# Editor directories and files
+src-tauri/target/
 .vscode/*
 !.vscode/extensions.json
 .idea

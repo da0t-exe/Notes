@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { StrictMode, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import { bootNative } from './lib'
 import { EditorPane } from './Editor'
 import {
   IconBack,
@@ -23,10 +26,7 @@ import {
   IconWinMin,
   IconWinRestore,
 } from './icons'
-import { parseList, previewMarkdownHybrid, serializeList } from './lib/markdown'
-import { formatBytes, previewText } from './lib/format'
-import { ENCODINGS } from './lib/encoding'
-import { isNative } from './native'
+import { ENCODINGS, formatBytes, isNative, parseList, previewMarkdownHybrid, previewText, serializeList } from './lib'
 import {
   activateTab,
   addCategory,
@@ -71,7 +71,7 @@ import {
   useCursor,
   useStore,
 } from './store'
-import type { Note } from './types'
+import type { Note } from './lib'
 
 type SortKey = 'updated-desc' | 'updated-asc' | 'title-asc' | 'title-desc' | 'created-desc' | 'created-asc'
 
@@ -398,9 +398,18 @@ function Shell() {
     return () => document.removeEventListener('mousedown', onDown)
   }, [sortOpen])
 
+  useEffect(() => {
+    if (!drawer) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setDrawer(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawer])
+
   return (
     <div
-      className={`app ${drop ? 'drop' : ''} ${isNative() ? 'native' : ''}`}
+      className={`app ${drop ? 'drop' : ''} ${isNative() ? 'native' : ''} ${drawer ? 'menu-open' : ''}`}
       onDragOver={(e) => {
         e.preventDefault()
         setDrop(true)
@@ -417,7 +426,7 @@ function Shell() {
       <header className="header">
         {screen === 'categories' || screen === 'settings' || screen === 'theme' || screen === 'trash' ? (
           <button
-            className="icon-btn"
+            className="icon-btn circle-btn"
             type="button"
             title="Back"
             onClick={() => setScreen(screen === 'theme' ? 'settings' : 'library')}
@@ -522,13 +531,13 @@ function Shell() {
         ) : null}
       </header>
 
-      {drawer ? (
-        <div className="drawer-back" onClick={() => setDrawer(false)}>
+      <div className={`drawer-back ${drawer ? 'open' : ''}`} aria-hidden={!drawer} onClick={() => setDrawer(false)}>
           <nav className="drawer" onClick={(e) => e.stopPropagation()}>
             <button
-              className={`drawer-item ${screen === 'library' ? 'active' : ''}`}
+              className="drawer-item"
               type="button"
               onClick={() => {
+                setFilter('all')
                 setScreen('library')
                 setDrawer(false)
               }}
@@ -537,7 +546,7 @@ function Shell() {
               <IconChevron />
             </button>
             <button
-              className={`drawer-item ${screen === 'categories' ? 'active' : ''}`}
+              className="drawer-item"
               type="button"
               onClick={() => {
                 setScreen('categories')
@@ -548,7 +557,7 @@ function Shell() {
               <IconChevron />
             </button>
             <button
-              className={`drawer-item ${screen === 'trash' ? 'active' : ''}`}
+              className="drawer-item"
               type="button"
               onClick={() => {
                 setScreen('trash')
@@ -559,8 +568,7 @@ function Shell() {
               <IconChevron />
             </button>
           </nav>
-        </div>
-      ) : null}
+      </div>
 
       {screen === 'categories' ? (
         <CategoriesPage />
@@ -915,8 +923,8 @@ function CategoriesPage() {
   }
 
   return (
-    <div className="page">
-      <div className="row">
+    <div className="page cats-page">
+      <div className="row cats-add">
         <input
           value={name}
           placeholder="New category..."
@@ -932,24 +940,26 @@ function CategoriesPage() {
       {categories.length === 0 ? (
         <p className="empty-hint">You don&apos;t have any categories yet</p>
       ) : (
-        categories.map((c) => (
-          <SwipeRow key={c.id} right={{ label: 'Delete', tone: 'del', onClick: () => removeCategory(c.id) }}>
-            <button
-              className="cat-btn"
-              type="button"
-              onClick={() => {
-                setFilter(c.id)
-                setScreen('library')
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                setEdit({ id: c.id, name: c.name })
-              }}
-            >
-              {c.name}
-            </button>
-          </SwipeRow>
-        ))
+        <div className="cat-group">
+          {categories.map((c) => (
+            <SwipeRow key={c.id} right={{ label: 'Delete', tone: 'del', onClick: () => removeCategory(c.id) }}>
+              <button
+                className="cat-btn"
+                type="button"
+                onClick={() => {
+                  setFilter(c.id)
+                  setScreen('library')
+                }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  setEdit({ id: c.id, name: c.name })
+                }}
+              >
+                {c.name}
+              </button>
+            </SwipeRow>
+          ))}
+        </div>
       )}
       {edit ? (
         <div className="sheet-back" onClick={() => setEdit(null)}>
@@ -1038,7 +1048,7 @@ function SettingsPage() {
         <a className="option" href="https://github.com/da0t-exe/Notes/releases" target="_blank" rel="noreferrer">
           <div className="left">
             <span>Software update</span>
-            <span className="desc">Version 0.2.0</span>
+            <span className="desc">Version 0.3.0</span>
           </div>
           <IconExternal />
         </a>
@@ -1102,7 +1112,7 @@ function LockApp() {
     <div className="app native">
       <TitleBar />
       <div className="lock">
-        <button className="icon-btn" type="button" style={{ alignSelf: 'flex-start' }} title="Quit" onClick={quitApp}>
+        <button className="icon-btn circle-btn" type="button" style={{ alignSelf: 'flex-start' }} title="Quit" onClick={quitApp}>
           <IconBack />
         </button>
         <h1>Unlock</h1>
@@ -1142,7 +1152,7 @@ function UnlockNote({ id }: { id: string }) {
 
   return (
     <div className="lock">
-      <button className="icon-btn" type="button" style={{ alignSelf: 'flex-start' }} onClick={cancelUnlock}>
+      <button className="icon-btn circle-btn" type="button" style={{ alignSelf: 'flex-start' }} onClick={cancelUnlock}>
         <IconBack />
       </button>
         <h1>Unlock</h1>
@@ -1168,3 +1178,11 @@ function UnlockNote({ id }: { id: string }) {
     </div>
   )
 }
+
+void bootNative().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+})

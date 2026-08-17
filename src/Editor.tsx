@@ -12,7 +12,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { bracketMatching, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
-import type { ListType, Note } from './types'
+import type { ListType, Note } from './lib'
 import {
   getContent,
   askText,
@@ -36,9 +36,7 @@ import {
   useStore,
   wrapActive,
 } from './store'
-import { HIGHLIGHT_MAX, PREVIEW_MAX, languageExtension } from './lib/languages'
-import { formatBytes, formatStamp } from './lib/format'
-import { parseList, renderMarkdown, serializeList } from './lib/markdown'
+import { formatBytes, formatStamp, HIGHLIGHT_MAX, languageExtension, parseList, PREVIEW_MAX, renderMarkdown, serializeList } from './lib'
 import {
   IconBold,
   IconCamera,

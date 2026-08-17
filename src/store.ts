@@ -1,23 +1,48 @@
 import { useSyncExternalStore } from 'react'
-import type { Category, ListType, LoadProgress, Note, NoteKind, Screen, Settings, Toast } from './types'
-import { idbDel, idbGet, idbGetAll, idbSet, kvGet, kvSet } from './lib/idb'
-import { formatBytes, titleFromContent, uid } from './lib/format'
-import { kindFromName, languageLabel, MAX_OPEN, PERSIST_MAX, WARN_SIZE } from './lib/languages'
+import type { EditorView } from '@codemirror/view'
+import { openSearchPanel } from '@codemirror/search'
 import {
+  applyLineEnding,
+  decryptText,
   downloadText,
+  encryptText,
   ensurePermission,
+  formatBytes,
+  hashPin,
+  idbDel,
+  idbGet,
+  idbGetAll,
+  idbSet,
   isFileHandle,
+  isNative,
+  kindFromName,
+  kvGet,
+  kvSet,
+  languageLabel,
+  MAX_OPEN,
+  parseList,
+  PERSIST_MAX,
   pickOpenFiles,
   pickSaveFile,
   readFileStreaming,
+  serializeList,
+  titleFromContent,
+  uid,
+  verifyPin,
+  WARN_SIZE,
   writeHandle,
-} from './lib/files'
-import { parseList, serializeList } from './lib/markdown'
-import { applyLineEnding } from './lib/encoding'
-import { decryptText, encryptText, hashPin, verifyPin } from './lib/crypto'
-import type { EditorView } from '@codemirror/view'
-import { openSearchPanel } from '@codemirror/search'
-import { isNative, type NativeFile } from './native'
+  type Category,
+  type ListType,
+  type LoadProgress,
+  type NativeFile,
+  type Note,
+  type NoteKind,
+  type Screen,
+  type Settings,
+  type Toast,
+} from './lib'
+
+export type { ListType, Note, NoteKind, Screen, Settings }
 
 export type ConfirmDialog = { title: string; text: string }
 export type TextPrompt = { title: string; label: string; secret?: boolean }

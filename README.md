@@ -5,11 +5,11 @@
 <h1>Notes</h1>
 
 <p>A minimalist, native tabbed text editor for Windows.</p>
-<p><sub>Tauri + Rust · v0.2</sub></p>
+<p><sub>Tauri + Rust · v0.3</sub></p>
 
 [<img src="https://raw.githubusercontent.com/da0t-exe/Notes/main/public/download.png" height="48" alt="Download" />](https://github.com/da0t-exe/Notes/releases/latest)
 
-[![version](https://img.shields.io/badge/v0.2-000000?style=flat-square)](https://github.com/da0t-exe/Notes/releases/latest)
+[![version](https://img.shields.io/badge/v0.3-000000?style=flat-square)](https://github.com/da0t-exe/Notes/releases/latest)
 [![platform](https://img.shields.io/badge/Windows-000000?style=flat-square)](#)
 [![license](https://img.shields.io/badge/MIT-000000?style=flat-square)](#)
 
@@ -29,7 +29,7 @@ interface, live Markdown, no Electron. Built with [Cursor Agent](https://cursor.
 
 ## Installation
 
-**Portable** — [Notes-v0.2.exe](https://github.com/da0t-exe/Notes/releases/latest)
+**Portable** — [Notes-v0.3.exe](https://github.com/da0t-exe/Notes/releases/latest)
 
 **App Installer** — [Notes.appinstaller](https://github.com/da0t-exe/Notes/releases/latest) (keep the `.msix` next to it, or install straight from the release)
 
@@ -56,4 +56,3 @@ npm run dist:appinstaller
 <div align="center">
 <sub>Built with Rust & Tauri by <a href="https://github.com/da0t-exe">da0t-exe</a> (and Cursor Agent)</sub>
 </div>
-
