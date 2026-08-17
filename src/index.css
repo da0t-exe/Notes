@@ -1121,6 +1121,22 @@ button {
   outline: none;
   font-size: 14px;
   width: 100%;
+  /* A grid item defaults to min-content width, so a long entry would push the
+     row wider than its track instead of scrolling inside it. */
+  min-width: 0;
+}
+
+/* The shared .icon-btn is 48px; the grid reserves 28 for these columns, and the
+   20px difference was what put a scrollbar under the list. */
+.check-edit .icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.check-edit .icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .check-box {
@@ -1975,17 +1991,31 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* `animation: none`, not a collapsed duration. Shortening a looping animation
+     runs it as a strobe rather than stopping it — that is what happened to the
+     caret — and every animation here is an entrance whose resting state is the
+     element's natural one, so removing it lands exactly where it should.
+     Transitions are safe to shorten: they always settle on their end value. */
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation: none !important;
     transition-duration: 0.01ms !important;
   }
+}
 
-  /* A blink is a looping animation, so collapsing its duration turns it into a
-     strobe rather than stopping it. Reduced motion means a caret that does not
-     blink at all. */
-  .cm-cursorLayer {
-    animation: none !important;
-  }
+/* --------------------------------------------------------- scrollbars -- */
+/* Nothing scrolls with a visible bar. The reference is a phone app, where the
+   chrome never appears, and the desktop layout has no place it would help:
+   every scrollable region here is bounded and obvious. Scrolling itself is
+   untouched — wheel, trackpad, keyboard and drag all still work. */
+
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }

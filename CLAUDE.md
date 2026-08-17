@@ -115,9 +115,16 @@ character as mojibake — `✓` came back as `âœ"` and shipped that way — an
 `[System.IO.File]::ReadAllText/WriteAllText` with an explicit
 `UTF8Encoding($false)`.
 
-**Reduced motion must stop a blink, not shorten it.** The blanket
-`animation-duration: 0.01ms` under `prefers-reduced-motion` turned CodeMirror's
-caret into a strobe; looping animations need `animation: none` instead.
+**Reduced motion removes animations, it does not shorten them.** The usual
+`animation-duration: 0.01ms` recipe runs a looping animation as a strobe rather
+than stopping it — that is what happened to CodeMirror's caret — and leaves an
+entrance animation one composited frame away from its resting position. Under
+`prefers-reduced-motion` the stylesheet sets `animation: none`. Transitions are
+still shortened, since those always settle on their end value.
+
+**Scrollbars are hidden app-wide** (`scrollbar-width: none` plus the WebKit
+pseudo-element). That hides the symptom, so a stray scrollbar means a real
+overflow: find what is too wide rather than adding another `overflow: hidden`.
 
 ## Conventions
 
