@@ -38,7 +38,9 @@
   --on-bg: #f0f2f1;
   --fg: #121318;
   --surface: #1e2124;
-  --outline: #ffffff1a;
+  /* white + 1a, not pure white + 1a. The reference builds its outline from the
+     #f0f2f1 base token, so #ffffff1a was a shade off everywhere it was used. */
+  --outline: #f0f2f11a;
   --backdrop: #06080ab3;
   --muted: #f0f2f166;
   --faint: #f0f2f140;
@@ -381,8 +383,9 @@ button {
 }
 
 .sidebar-scroll > * {
-  margin-left: 17px;
-  margin-right: 17px;
+  /* 16, matching the reference's paddingHorizontal on the swipeable container. */
+  margin-left: 16px;
+  margin-right: 16px;
   min-width: 0;
   box-sizing: border-box;
 }
@@ -417,7 +420,7 @@ button {
   border-radius: 16px;
   padding: 16px;
   text-align: left;
-  /* Not 100%: the card is a direct child of .sidebar-scroll, which adds 17px
+  /* Not 100%: the card is a direct child of .sidebar-scroll, which adds 16px
      of side margin. Forcing full width overflows by 34px and clips on the
      right. As a flex child it stretches to the right size on its own. */
   width: auto;
@@ -694,11 +697,13 @@ button {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 72px;
+  /* 100 wide with a 24 gap from the card, radius 16 — the reference's
+     Actions/*.js values, and 16 is its COMMONS.radius. */
+  width: 100px;
   display: grid;
   place-items: center;
   z-index: 0;
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: none;
   filter: none;
   outline: none;
@@ -730,19 +735,18 @@ button {
   left: 0;
 }
 
+/* Reference: delete paints accent with a white-token icon; pin and restore
+   invert the theme — onBackground behind, background in front — so they follow
+   light mode instead of staying pinned to the dark palette. */
 .swipe-action.del {
-  background: #c8102e;
-  color: #fff;
+  background: var(--accent);
+  color: var(--white);
 }
 
-.swipe-action.pin {
-  background: #d7d8d8;
-  color: #06080a;
-}
-
+.swipe-action.pin,
 .swipe-action.restore {
-  background: #d7d8d8;
-  color: #06080a;
+  background: var(--on-bg);
+  color: var(--bg);
 }
 
 .swipe-action svg {
@@ -756,7 +760,7 @@ button {
 }
 
 .swipe-action.del svg {
-  stroke: #fff;
+  stroke: var(--white);
 }
 
 .swipe-front {

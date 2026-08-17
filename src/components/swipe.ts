@@ -1,5 +1,10 @@
-/** How far a row opens to expose an action. */
-export const REVEAL = 84
+/**
+ * How far a row opens to expose an action.
+ *
+ * 100 for the action plus a 24 gap from the card — the reference app's
+ * Actions/*.js width and margin.
+ */
+export const REVEAL = 124
 /** Past this on release, the row settles open rather than closed. */
 const SNAP = REVEAL / 2
 /** Movement past the reveal is damped rather than stopped, so the edge has give. */
