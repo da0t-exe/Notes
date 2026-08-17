@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      // Cargo writes into src-tauri/target while the dev server is running, and
+      // the watcher dies with EBUSY the moment it opens a build artifact mid-write.
+      ignored: ['**/src-tauri/**'],
+    },
   },
   build: {
     target: 'es2023',
