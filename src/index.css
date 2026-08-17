@@ -766,7 +766,10 @@ button {
      scroll vertically under a finger. */
   touch-action: pan-y;
   user-select: none;
-  cursor: grab;
+  /* The row opens a note on press; dragging is the secondary gesture. A grab
+     cursor at rest advertises the wrong one. It becomes grabbing below, once a
+     drag is actually under way. */
+  cursor: pointer;
   background: transparent;
   -webkit-user-drag: none;
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
