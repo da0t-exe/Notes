@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { TabBar } from './components/TabBar'
 import { TitleBar } from './components/TitleBar'
 import { EditorPane } from './editor/EditorPane'
 import { IconClose, IconPanel, IconPlus, IconPreview } from './icons'
@@ -190,6 +191,7 @@ function Shell() {
         <section className="editor-col">
           {active ? (
             <>
+              <TabBar />
               <EditorPane note={active} />
               <StatusBar note={active} />
             </>

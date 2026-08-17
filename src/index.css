@@ -908,7 +908,83 @@ button {
 }
 
 .tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--outline);
+  flex: 0 0 auto;
+}
+
+.tabs::-webkit-scrollbar {
   display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  max-width: 220px;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--on-bg);
+  background: var(--surface);
+}
+
+.tab.active {
+  color: var(--on-bg);
+  background: var(--surface);
+  border-color: var(--outline);
+}
+
+.tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An unsaved tab grows a dot before its name, so the state is visible even
+   when the strip is scrolled and the status bar is off screen. */
+.tab.dirty .tab-name::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--faint);
+  flex: 0 0 auto;
+}
+
+.tab:hover .tab-close,
+.tab.active .tab-close {
+  color: var(--muted);
+}
+
+.tab-close:hover {
+  color: var(--on-bg);
+  background: var(--outline);
 }
 
 .meta-bar {
