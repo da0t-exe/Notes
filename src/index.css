@@ -48,6 +48,9 @@
   --invert: #f0f2f1;
   --invert-text: #06080a;
   --shadow: transparent;
+  /* One line of 12px readouts plus 8px of padding either side and the top
+     border. Declared so the corner panel button can clear the bar exactly. */
+  --status-h: 41px;
   color-scheme: dark;
 }
 
@@ -676,6 +679,12 @@ button {
   z-index: 8;
 }
 
+/* Cleared above the status bar when one is present, keeping the same 16px it
+   holds from the left edge. With no note open there is no bar to clear. */
+.workspace:has(.status) .rail-open {
+  bottom: calc(var(--status-h) + 16px);
+}
+
 .rail-open svg {
   width: 20px;
   height: 20px;
@@ -1189,6 +1198,8 @@ button {
   color: var(--muted);
   font-size: 12px;
   flex: 0 0 auto;
+  /* Pinned so --status-h stays true and the corner button clears it exactly. */
+  height: var(--status-h);
 }
 
 .status::-webkit-scrollbar {
