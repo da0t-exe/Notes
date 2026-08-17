@@ -1,18 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { Drawer } from './components/Drawer'
 import { TabBar } from './components/TabBar'
 import { TitleBar } from './components/TitleBar'
 import { EditorPane } from './editor/EditorPane'
-import { IconClose, IconPanel, IconPlus, IconPreview } from './icons'
+import {
+  IconBack,
+  IconClose,
+  IconFolder,
+  IconMenu,
+  IconPanel,
+  IconPlus,
+  IconPreview,
+  IconTrash,
+} from './icons'
 import { formatBytes } from './lib/format'
 import { previewMarkdownHybrid } from './lib/markdown'
 import { isNative } from './lib/native'
 import type { Note } from './lib/types'
+import { CategoriesScreen } from './screens/Categories'
+import { TrashScreen } from './screens/Trash'
 import {
   activateTab,
+  addCategory,
   answerConfirm,
+  answerText,
+  askText,
   closeTab,
   confirmQuit,
+  emptyTrash,
   findInActive,
   getState,
   init,
@@ -20,11 +36,15 @@ import {
   openFromDisk,
   saveActive,
   saveActiveAs,
+  setFilter,
   setFontSize,
+  setScreen,
   setTheme,
   setWrap,
-  toggleSidebar,
+  toggleNoteCategory,
   togglePreview,
+  toggleSidebar,
+  trashNote,
   useCursor,
   useStore,
 } from './store'
@@ -103,34 +123,45 @@ function useCloseGuard() {
   }, [])
 }
 
+const TITLES: Record<string, string> = {
+  categories: 'Categories',
+  trash: 'Trash',
+  settings: 'Settings',
+  theme: 'Color theme',
+}
+
 function Shell() {
+  const screen = useStore((s) => s.screen)
   const notes = useStore((s) => s.notes)
   const activeId = useStore((s) => s.activeId)
   const sidebar = useStore((s) => s.sidebar)
   const contents = useStore((s) => s.contents)
-  const toasts = useStore((s) => s.toasts)
-  const progress = useStore((s) => s.progress)
-  const confirm = useStore((s) => s.confirm)
+  const categories = useStore((s) => s.categories)
+  const filter = useStore((s) => s.filter)
+  const trash = useStore((s) => s.trash)
   const preview = useStore((s) => s.preview)
 
+  const [drawer, setDrawer] = useState(false)
   const [query, setQuery] = useState('')
   const [drop, setDrop] = useState(false)
 
   const active = notes.find((n) => n.id === activeId) ?? null
+  const inLibrary = screen === 'library'
 
   const visible = useMemo(() => {
+    let list = filter === 'all' ? notes : notes.filter((n) => n.categoryIds.includes(filter))
     const q = query.trim().toLowerCase()
-    const list = q
-      ? notes.filter(
-          (n) => n.title.toLowerCase().includes(q) || (contents[n.id] ?? '').toLowerCase().includes(q),
-        )
-      : notes
+    if (q) {
+      list = list.filter(
+        (n) => n.title.toLowerCase().includes(q) || (contents[n.id] ?? '').toLowerCase().includes(q),
+      )
+    }
     return list.toSorted((a, b) => b.updatedAt - a.updatedAt)
-  }, [notes, contents, query])
+  }, [notes, contents, query, filter])
 
   return (
     <div
-      className={`app ${isNative() ? 'native' : ''} ${drop ? 'drop' : ''}`}
+      className={`app ${isNative() ? 'native' : ''} ${drop ? 'drop' : ''} ${drawer ? 'menu-open' : ''}`}
       onDragOver={(e) => {
         e.preventDefault()
         setDrop(true)
@@ -146,67 +177,235 @@ function Shell() {
       <TitleBar />
 
       <header className="header">
-        <h1 className="headline">{active?.title || 'Notes'}</h1>
-        <button
-          className={`icon-btn ${sidebar ? 'on' : ''}`}
-          type="button"
-          title={sidebar ? 'Hide notes (Ctrl+B)' : 'Show notes (Ctrl+B)'}
-          onClick={toggleSidebar}
-        >
-          <IconPanel />
-        </button>
-        <button
-          className={`icon-btn ${preview ? 'on' : ''}`}
-          type="button"
-          title="Markdown preview (Alt+P)"
-          onClick={togglePreview}
-        >
-          <IconPreview />
-        </button>
-      </header>
-
-      <div className={`workspace ide ${sidebar ? '' : 'collapsed'}`}>
-        <aside className="sidebar">
-          <div className="sidebar-scroll">
-            <div className="search-row">
-              <input
-                className="search-bar"
-                value={query}
-                placeholder="Search..."
-                aria-label="Search notes"
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            {visible.length === 0 ? (
-              <p className="empty-hint">You don&apos;t have any notes yet</p>
-            ) : (
-              visible.map((note) => <NoteCard key={note.id} note={note} active={note.id === activeId} />)
-            )}
-          </div>
-          <button className="fab sidebar-fab" type="button" title="New note (Ctrl+N)" onClick={() => newNote('markdown')}>
-            <IconPlus />
+        {inLibrary ? (
+          <button className="icon-btn" type="button" title="Menu" onClick={() => setDrawer(true)}>
+            <IconMenu />
           </button>
-        </aside>
+        ) : (
+          <button
+            className="icon-btn circle-btn"
+            type="button"
+            title="Back"
+            onClick={() => setScreen('library')}
+          >
+            <IconBack />
+          </button>
+        )}
 
-        <section className="editor-col">
-          {active ? (
-            <>
-              <TabBar />
-              <EditorPane note={active} />
-              <StatusBar note={active} />
-            </>
-          ) : (
-            <p className="empty-hint">Select a note, or press Ctrl+N to write</p>
-          )}
-        </section>
+        <h1 className="headline">{TITLES[screen] ?? active?.title ?? 'Notes'}</h1>
 
-        {!sidebar ? (
-          <button className="rail-open" type="button" title="Show notes (Ctrl+B)" onClick={toggleSidebar}>
-            <IconPanel />
+        {inLibrary ? (
+          <>
+            <button
+              className={`icon-btn ${sidebar ? 'on' : ''}`}
+              type="button"
+              title={sidebar ? 'Hide notes (Ctrl+B)' : 'Show notes (Ctrl+B)'}
+              onClick={toggleSidebar}
+            >
+              <IconPanel />
+            </button>
+            <button
+              className={`icon-btn ${preview ? 'on' : ''}`}
+              type="button"
+              title="Markdown preview (Alt+P)"
+              onClick={togglePreview}
+            >
+              <IconPreview />
+            </button>
+          </>
+        ) : null}
+
+        {screen === 'trash' && trash.length > 0 ? (
+          <button className="icon-btn" type="button" title="Empty trash" onClick={() => void emptyTrash()}>
+            <IconTrash />
           </button>
         ) : null}
-      </div>
+      </header>
 
+      <Drawer open={drawer} onClose={() => setDrawer(false)} />
+
+      {screen === 'categories' ? (
+        <CategoriesScreen />
+      ) : screen === 'trash' ? (
+        <TrashScreen />
+      ) : (
+        <div className={`workspace ide ${sidebar ? '' : 'collapsed'}`}>
+          <aside className="sidebar">
+            <div className="sidebar-scroll">
+              <div className="search-row">
+                <input
+                  className="search-bar"
+                  value={query}
+                  placeholder="Search..."
+                  aria-label="Search notes"
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {filter !== 'all' ? (
+                  <button className="filter-chip" type="button" onClick={() => setFilter('all')}>
+                    {categories.find((c) => c.id === filter)?.name ?? 'Filter'}
+                    <IconClose width={14} height={14} />
+                  </button>
+                ) : null}
+              </div>
+              {visible.length === 0 ? (
+                <p className="empty-hint">
+                  {filter === 'all' ? "You don't have any notes yet" : 'Nothing in this category'}
+                </p>
+              ) : (
+                visible.map((note) => <NoteCard key={note.id} note={note} active={note.id === activeId} />)
+              )}
+            </div>
+            <button
+              className="fab sidebar-fab"
+              type="button"
+              title="New note (Ctrl+N)"
+              onClick={() => newNote('markdown')}
+            >
+              <IconPlus />
+            </button>
+          </aside>
+
+          <section className="editor-col">
+            {active ? (
+              <>
+                <TabBar />
+                {active.fromDisk ? null : <NoteChrome note={active} />}
+                <EditorPane note={active} />
+                <StatusBar note={active} />
+              </>
+            ) : (
+              <p className="empty-hint">Select a note, or press Ctrl+N to write</p>
+            )}
+          </section>
+
+          {!sidebar ? (
+            <button className="rail-open" type="button" title="Show notes (Ctrl+B)" onClick={toggleSidebar}>
+              <IconPanel />
+            </button>
+          ) : null}
+        </div>
+      )}
+
+      <Overlays />
+    </div>
+  )
+}
+
+/**
+ * Category chips for a stored note. Never rendered for a file opened from disk:
+ * a file lives in the filesystem and has no business carrying app metadata.
+ */
+function NoteChrome({ note }: { note: Note }) {
+  const categories = useStore((s) => s.categories)
+
+  return (
+    <div className="meta-bar">
+      {categories.map((c) => (
+        <button
+          key={c.id}
+          className={`ghost-pill ${note.categoryIds.includes(c.id) ? 'pill active' : ''}`}
+          type="button"
+          onClick={() => toggleNoteCategory(note.id, c.id)}
+        >
+          {c.name}
+        </button>
+      ))}
+      <button
+        className="plus circle"
+        type="button"
+        title="New category"
+        onClick={async () => {
+          const name = await askText('New category', 'Category name')
+          if (!name) return
+          const id = addCategory(name)
+          if (id) toggleNoteCategory(note.id, id)
+        }}
+      >
+        <IconPlus width={14} height={14} />
+      </button>
+    </div>
+  )
+}
+
+function NoteCard({ note, active }: { note: Note; active: boolean }) {
+  const content = useStore((s) => s.contents[note.id] ?? '')
+
+  return (
+    <div
+      className={`note-card ${active ? 'active' : ''}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => activateTab(note.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') activateTab(note.id)
+      }}
+    >
+      <div className="note-card-head">
+        <h3>{note.title || 'Untitled'}</h3>
+        {note.dirty ? (
+          <span className="lock-mark" title="Unsaved">
+            •
+          </span>
+        ) : null}
+      </div>
+      {/* Escaped inside previewMarkdownHybrid before any markup is added. */}
+      {/* eslint-disable-next-line react/no-danger */}
+      <pre className="md-preview" dangerouslySetInnerHTML={{ __html: previewMarkdownHybrid(content) }} />
+    </div>
+  )
+}
+
+function StatusBar({ note }: { note: Note }) {
+  const cursor = useCursor()
+  const wrap = useStore((s) => s.settings.wrap)
+
+  return (
+    <div className="status">
+      <span>
+        Ln {cursor.line}, Col {cursor.col}
+      </span>
+      <span>{formatBytes(note.size)}</span>
+      <span>{note.language}</span>
+      {note.fromDisk ? <span>{note.encoding.toUpperCase()}</span> : null}
+      {note.fromDisk ? <span>{note.lineEnding}</span> : null}
+      <button type="button" onClick={() => setWrap(!wrap)}>
+        {wrap ? 'Wrap' : 'No wrap'}
+      </button>
+      <span style={{ flex: 1 }} />
+      {note.dirty ? <span>Unsaved</span> : null}
+      <button type="button" onClick={() => void saveActive()}>
+        Save
+      </button>
+      {note.fromDisk ? null : (
+        <button className="icon-btn" type="button" title="Move to trash" onClick={() => void trashNote(note.id)}>
+          <IconTrash />
+        </button>
+      )}
+      {note.fromDisk ? (
+        <button className="icon-btn" type="button" title="Categories" onClick={() => setScreen('categories')}>
+          <IconFolder />
+        </button>
+      ) : null}
+      <button className="icon-btn" type="button" title="Close (Ctrl+W)" onClick={() => void closeTab(note.id)}>
+        <IconClose />
+      </button>
+    </div>
+  )
+}
+
+function Overlays() {
+  const toasts = useStore((s) => s.toasts)
+  const progress = useStore((s) => s.progress)
+  const confirm = useStore((s) => s.confirm)
+  const textPrompt = useStore((s) => s.textPrompt)
+  const [draft, setDraft] = useState('')
+
+  useEffect(() => {
+    setDraft(textPrompt?.value ?? '')
+  }, [textPrompt])
+
+  return (
+    <>
       {progress ? (
         <div className="progress">
           {progress.name} · {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
@@ -237,58 +436,33 @@ function Shell() {
           </div>
         </div>
       ) : null}
-    </div>
-  )
-}
 
-function NoteCard({ note, active }: { note: Note; active: boolean }) {
-  const content = useStore((s) => s.contents[note.id] ?? '')
-
-  return (
-    <div
-      className={`note-card ${active ? 'active' : ''}`}
-      role="button"
-      tabIndex={0}
-      onClick={() => activateTab(note.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') activateTab(note.id)
-      }}
-    >
-      <div className="note-card-head">
-        <h3>{note.title || 'Untitled'}</h3>
-        {note.dirty ? <span className="lock-mark" title="Unsaved">•</span> : null}
-      </div>
-      {/* Escaped inside previewMarkdownHybrid before any markup is added. */}
-      {/* eslint-disable-next-line react/no-danger */}
-      <pre className="md-preview" dangerouslySetInnerHTML={{ __html: previewMarkdownHybrid(content) }} />
-    </div>
-  )
-}
-
-function StatusBar({ note }: { note: Note }) {
-  const cursor = useCursor()
-  const wrap = useStore((s) => s.settings.wrap)
-
-  return (
-    <div className="status">
-      <span>
-        Ln {cursor.line}, Col {cursor.col}
-      </span>
-      <span>{formatBytes(note.size)}</span>
-      <span>{note.language}</span>
-      {note.fromDisk ? <span>{note.encoding.toUpperCase()}</span> : null}
-      {note.fromDisk ? <span>{note.lineEnding}</span> : null}
-      <button type="button" onClick={() => setWrap(!wrap)}>
-        {wrap ? 'Wrap' : 'No wrap'}
-      </button>
-      <span style={{ flex: 1 }} />
-      {note.dirty ? <span>Unsaved</span> : null}
-      <button type="button" onClick={() => void saveActive()}>
-        Save
-      </button>
-      <button className="icon-btn" type="button" title="Close (Ctrl+W)" onClick={() => void closeTab(note.id)}>
-        <IconClose />
-      </button>
-    </div>
+      {textPrompt ? (
+        <div className="modal-back">
+          <div className="modal" role="dialog" aria-modal="true" aria-label={textPrompt.title}>
+            <h2>{textPrompt.title}</h2>
+            <p>{textPrompt.label}</p>
+            <input
+              className="modal-input"
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') answerText(draft)
+                if (e.key === 'Escape') answerText(null)
+              }}
+            />
+            <div className="modal-actions">
+              <button className="yes" type="button" onClick={() => answerText(draft)}>
+                Save
+              </button>
+              <button type="button" onClick={() => answerText(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }

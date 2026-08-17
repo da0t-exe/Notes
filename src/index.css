@@ -417,7 +417,10 @@ button {
   border-radius: 16px;
   padding: 16px;
   text-align: left;
-  width: 100%;
+  /* Not 100%: the card is a direct child of .sidebar-scroll, which adds 17px
+     of side margin. Forcing full width overflows by 34px and clips on the
+     right. As a flex child it stretches to the right size on its own. */
+  width: auto;
   display: block;
   color: inherit;
   overflow: hidden;
@@ -1222,11 +1225,41 @@ button {
 
 .status {
   display: flex;
+  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px 16px 12px;
+  /* v0.3 wrapped because the bar carried five selects. It now holds a handful
+     of readouts and must stay on one line; overflow scrolls instead. */
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 16px;
+  border-top: 1px solid var(--outline);
   color: var(--muted);
   font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.status::-webkit-scrollbar {
+  display: none;
+}
+
+.status button,
+.status select {
+  flex: 0 0 auto;
+}
+
+/* The shared .icon-btn is a 48px touch target, which triples the height of a
+   12px status bar. Scale it down to the bar rather than the other way round. */
+.status .icon-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.status .icon-btn svg {
+  width: 15px;
+  height: 15px;
 }
 
 .status button,

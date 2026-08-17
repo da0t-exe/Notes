@@ -19,7 +19,16 @@ import { formatBytes, titleFromContent, uid } from '../lib/format'
 import { idbDel, idbGet, idbGetAll, idbSet, kvGet, kvSet } from '../lib/idb'
 import { kindFromName, languageLabel } from '../lib/languages'
 import { bootNative, isNative } from '../lib/native'
-import type { LoadProgress, NativeFile, Note, NoteKind, Settings, Toast } from '../lib/types'
+import type {
+  Category,
+  LoadProgress,
+  NativeFile,
+  Note,
+  NoteKind,
+  Screen,
+  Settings,
+  Toast,
+} from '../lib/types'
 
 export { bootNative, isNative }
 
@@ -32,13 +41,21 @@ type State = {
   originals: Record<string, string>
   openTabs: string[]
   activeId: string | null
+  screen: Screen
   sidebar: boolean
   preview: boolean
   settings: Settings
   toasts: Toast[]
   progress: LoadProgress | null
   confirm: ConfirmDialog | null
+  textPrompt: TextPrompt | null
+  categories: Category[]
+  filter: string
+  trash: Note[]
+  trashContents: Record<string, string>
 }
+
+export type TextPrompt = { title: string; label: string; value: string }
 
 const defaultSettings: Settings = { theme: 'dark', wrap: true, fontSize: 15 }
 
@@ -49,12 +66,18 @@ let state: State = {
   originals: {},
   openTabs: [],
   activeId: null,
+  screen: 'library',
   sidebar: true,
   preview: false,
   settings: defaultSettings,
   toasts: [],
   progress: null,
   confirm: null,
+  textPrompt: null,
+  categories: [],
+  filter: 'all',
+  trash: [],
+  trashContents: {},
 }
 
 const listeners = new Set<() => void>()
@@ -154,6 +177,21 @@ export function answerConfirm(ok: boolean) {
   set({ confirm: null })
 }
 
+let textResolve: ((value: string | null) => void) | null = null
+
+export function askText(title: string, label: string, value = ''): Promise<string | null> {
+  return new Promise((resolve) => {
+    textResolve = resolve
+    set({ textPrompt: { title, label, value } })
+  })
+}
+
+export function answerText(value: string | null) {
+  textResolve?.(value)
+  textResolve = null
+  set({ textPrompt: null })
+}
+
 /* --------------------------------------------------------- persistence -- */
 
 // v0.3 rewrote every note on every tick, so a single keystroke in an 8 MB log
@@ -172,10 +210,13 @@ async function persist() {
   pending.clear()
 
   await kvSet('settings', state.settings)
+  await kvSet('categories', state.categories)
+  await kvSet('trash', { notes: state.trash, contents: state.trashContents })
   await kvSet('session', {
     openTabs: state.openTabs,
     activeId: state.activeId,
     sidebar: state.sidebar,
+    filter: state.filter,
   })
 
   for (const id of ids) {
@@ -252,7 +293,14 @@ export function init(): Promise<void> {
 
 async function boot() {
   const savedSettings = await kvGet<Partial<Settings>>('settings')
-  const session = await kvGet<{ openTabs: string[]; activeId: string | null; sidebar: boolean }>('session')
+  const session = await kvGet<{
+    openTabs: string[]
+    activeId: string | null
+    sidebar: boolean
+    filter: string
+  }>('session')
+  const savedCategories = await kvGet<Category[]>('categories')
+  const savedTrash = await kvGet<{ notes: Note[]; contents: Record<string, string> }>('trash')
   const stored = await idbGetAll<Note & { dirtyUi?: boolean }>('notes')
 
   const notes: Note[] = stored.map(({ dirtyUi, ...n }) => ({ ...n, dirty: Boolean(dirtyUi) }))
@@ -282,7 +330,149 @@ async function boot() {
     openTabs,
     activeId,
     sidebar: session?.sidebar ?? true,
+    filter: session?.filter ?? 'all',
+    categories: savedCategories ?? [],
+    trash: savedTrash?.notes ?? [],
+    trashContents: savedTrash?.contents ?? {},
   })
+}
+
+/* ----------------------------------------------------------- navigation -- */
+
+export function setScreen(screen: Screen) {
+  set({ screen })
+}
+
+export function setFilter(filter: string) {
+  set({ filter, screen: 'library' })
+  schedulePersist()
+}
+
+/* ----------------------------------------------------------- categories -- */
+
+export function addCategory(name: string): string | null {
+  const trimmed = name.trim()
+  if (!trimmed) return null
+
+  const existing = state.categories.find((c) => c.name.toLowerCase() === trimmed.toLowerCase())
+  if (existing) {
+    notify('That category already exists', 'warn')
+    return existing.id
+  }
+
+  const id = uid()
+  set({ categories: [...state.categories, { id, name: trimmed }] })
+  schedulePersist()
+  return id
+}
+
+export function renameCategory(id: string, name: string) {
+  const trimmed = name.trim()
+  if (!trimmed) return
+  set({ categories: state.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c)) })
+  schedulePersist()
+}
+
+export function removeCategory(id: string) {
+  // Detach the category from every note rather than leaving dangling ids that
+  // would quietly hide notes from a filter that no longer exists.
+  const notes = state.notes.map((n) =>
+    n.categoryIds.includes(id) ? { ...n, categoryIds: n.categoryIds.filter((c) => c !== id) } : n,
+  )
+  set({
+    categories: state.categories.filter((c) => c.id !== id),
+    notes,
+    filter: state.filter === id ? 'all' : state.filter,
+  })
+  for (const n of notes) pending.add(n.id)
+  schedulePersist()
+}
+
+export function toggleNoteCategory(noteId: string, categoryId: string) {
+  const note = state.notes.find((n) => n.id === noteId)
+  if (!note) return
+  const categoryIds = note.categoryIds.includes(categoryId)
+    ? note.categoryIds.filter((c) => c !== categoryId)
+    : [...note.categoryIds, categoryId]
+  set({
+    notes: state.notes.map((n) => (n.id === noteId ? { ...n, categoryIds, updatedAt: Date.now() } : n)),
+  })
+  schedulePersist(noteId)
+}
+
+/* ---------------------------------------------------------------- trash -- */
+
+/**
+ * Moves a stored note to the trash. Files opened from disk are never trashed —
+ * closing one leaves the file untouched, which is what `closeTab` is for.
+ */
+export async function trashNote(id: string): Promise<boolean> {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return false
+
+  if (note.fromDisk) {
+    notify('This is a file on disk — close it instead', 'warn')
+    return false
+  }
+  if (note.dirty && !(await ask('Move to trash', `“${note.title || 'Untitled'}” has unsaved edits. Trash it anyway?`))) {
+    return false
+  }
+
+  const text = getContent(id)
+  unregisterView(id)
+
+  const openTabs = state.openTabs.filter((t) => t !== id)
+  const { [id]: _dropped, ...contents } = state.contents
+  set({
+    notes: state.notes.filter((n) => n.id !== id),
+    contents,
+    openTabs,
+    activeId: state.activeId === id ? (openTabs[openTabs.length - 1] ?? null) : state.activeId,
+    trash: [{ ...note, updatedAt: Date.now() }, ...state.trash.filter((n) => n.id !== id)],
+    trashContents: { ...state.trashContents, [id]: text },
+  })
+
+  schedulePersist(id)
+  notify('Moved to trash')
+  return true
+}
+
+export function restoreNote(id: string) {
+  const note = state.trash.find((n) => n.id === id)
+  if (!note) return
+  const text = state.trashContents[id] ?? ''
+  const { [id]: _dropped, ...trashContents } = state.trashContents
+
+  set({
+    trash: state.trash.filter((n) => n.id !== id),
+    trashContents,
+    notes: [{ ...note, updatedAt: Date.now() }, ...state.notes],
+    contents: { ...state.contents, [id]: text },
+    originals: { ...state.originals, [id]: text },
+    screen: 'library',
+  })
+  schedulePersist(id)
+  notify('Note restored')
+}
+
+export async function purgeNote(id: string) {
+  const note = state.trash.find((n) => n.id === id)
+  if (!note) return
+  if (!(await ask('Delete permanently', `“${note.title || 'Untitled'}” cannot be recovered. Delete it?`))) return
+
+  const { [id]: _dropped, ...trashContents } = state.trashContents
+  set({ trash: state.trash.filter((n) => n.id !== id), trashContents })
+  schedulePersist()
+  notify('Deleted')
+}
+
+export async function emptyTrash() {
+  if (state.trash.length === 0) return
+  const n = state.trash.length
+  if (!(await ask('Empty trash', `Permanently delete ${n} note${n > 1 ? 's' : ''}? This cannot be undone.`))) return
+  set({ trash: [], trashContents: {} })
+  schedulePersist()
+  notify('Trash emptied')
 }
 
 /* ------------------------------------------------------------- settings -- */
