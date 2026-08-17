@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { IconPin, IconRestore, IconTrash } from '../icons'
+import { clampDrag, isDrag, REVEAL, snapTarget } from './swipe'
 
 export type SwipeAction = {
   label: string
   tone: 'del' | 'pin' | 'restore'
   onAct: () => void
 }
-
-const REVEAL = 84
-const SNAP = REVEAL / 2
-/** Movement past the reveal is damped rather than stopped, so the edge has give. */
-const RUBBER = 0.22
-/** Below this the gesture is a click, not a drag. */
-const SLOP = 6
 
 /**
  * Pointer capture, but never fatal. `releasePointerCapture` throws when the
@@ -53,6 +47,7 @@ export function SwipeRow({
   const [dragging, setDragging] = useState(false)
   const offset = useRef(0)
   const origin = useRef<number | null>(null)
+  const startOffset = useRef(0)
   const moved = useRef(false)
   const wrap = useRef<HTMLDivElement>(null)
 
@@ -86,6 +81,7 @@ export function SwipeRow({
     // Let controls inside the row keep their own clicks.
     if ((e.target as HTMLElement).closest('button, a, input, textarea')) return
     origin.current = e.clientX - offset.current
+    startOffset.current = offset.current
     moved.current = false
     setDragging(true)
     capture(e.currentTarget, e.pointerId, true)
@@ -94,12 +90,16 @@ export function SwipeRow({
   function move(e: PointerEvent<HTMLDivElement>) {
     if (origin.current === null) return
     const raw = e.clientX - origin.current
-    if (Math.abs(raw - offset.current) > SLOP) moved.current = true
 
-    let next = raw
-    if (raw > 0) next = left ? Math.min(raw, REVEAL + (raw - REVEAL) * RUBBER) : 0
-    else if (raw < 0) next = right ? Math.max(raw, -REVEAL + (raw + REVEAL) * RUBBER) : 0
-    settle(next)
+    // Nothing moves until the gesture clears the slop. Translating on the very
+    // first pixel left `offset` non-zero after the faintest mouse wobble, and
+    // the click guard below then swallowed the click that should open the note.
+    if (!moved.current) {
+      if (!isDrag(raw, startOffset.current)) return
+      moved.current = true
+    }
+
+    settle(clampDrag(raw, Boolean(left), Boolean(right)))
   }
 
   function up(e: PointerEvent<HTMLDivElement>) {
@@ -108,10 +108,7 @@ export function SwipeRow({
     setDragging(false)
     capture(e.currentTarget, e.pointerId, false)
 
-    const cur = offset.current
-    if (left && cur >= SNAP) settle(REVEAL)
-    else if (right && cur <= -SNAP) settle(-REVEAL)
-    else settle(0)
+    settle(snapTarget(offset.current, Boolean(left), Boolean(right)))
   }
 
   function act(action: SwipeAction) {
