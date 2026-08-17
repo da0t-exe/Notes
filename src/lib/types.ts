@@ -2,9 +2,7 @@ export type Theme = 'dark' | 'light' | 'system'
 export type NoteKind = 'text' | 'markdown' | 'checklist'
 export type ListType = 'checklist' | 'bulleted' | 'numbered'
 export type LineEnding = 'LF' | 'CRLF' | 'CR'
-export type Screen = 'library' | 'editor' | 'categories' | 'settings' | 'theme' | 'trash'
-
-export type Category = { id: string; name: string }
+export type Screen = 'library' | 'trash'
 
 /**
  * A note is either stored in IndexedDB (`fromDisk: false`) or is a view onto a
@@ -23,7 +21,6 @@ export type Note = {
   size: number
 
   /* stored notes only */
-  categoryIds: string[]
   pinned: boolean
   locked: boolean
   listType?: ListType

@@ -28,11 +28,16 @@
 Windows only. No telemetry, no network access — the app declares a
 content-security policy that permits none.
 
+- Swipe a note sideways to pin it or send it to the trash
+
 ## Status
 
 v0.4 is a rebuild. Working today: opening, editing, saving, search, Markdown
-preview, persistence. Not yet reimplemented from v0.3: categories, trash,
-checklists, per-note password locking, and the tab bar.
+preview, pinning, trash and persistence. Not yet reimplemented from v0.3:
+checklists and per-note password locking.
+
+Categories were dropped on purpose — in a flat personal note list they
+duplicated search.
 
 ## Shortcuts
 
@@ -42,6 +47,7 @@ checklists, per-note password locking, and the tab bar.
 | `Ctrl+O` | Open file |
 | `Ctrl+S` / `Ctrl+Shift+S` | Save / Save as |
 | `Ctrl+W` | Close |
+| `Ctrl+D` | Move note to trash |
 | `Ctrl+F` | Find |
 | `Ctrl+B` | Toggle sidebar |
 | `Alt+P` | Markdown preview |

@@ -42,12 +42,27 @@ The app serves two object types and they must not borrow each other's chrome.
 | | `fromDisk: false` — a **note** | `fromDisk: true` — a **file** |
 |---|---|---|
 | Lives in | IndexedDB | the filesystem |
-| Has | categories, images, pin, trash, lock | encoding, line endings, dirty state |
-| Deleting means | move to trash (recoverable) | close the tab (file untouched) |
+| Has | pin, trash, lock | encoding, line endings, dirty state |
+| Deleting means | move to trash (recoverable) | close it (file untouched) |
 
-`NoteChrome` and `EditorActions` branch on `note.fromDisk`. A file opened from
-disk never shows categories, image attachments or the trash action. This was
-the single biggest incoherence in v0.3 — do not reintroduce it.
+Anything note-shaped branches on `note.fromDisk`. A file opened from disk never
+shows the trash action — `trashNote` refuses one outright and says to close it
+instead. This was the single biggest incoherence in v0.3; do not reintroduce it.
+
+**Categories were removed in v0.4**, deliberately, not left unfinished. They
+duplicated what search already does in a flat, personal note list. Do not add
+them back without a reason that search does not cover.
+
+## Interaction
+
+Row actions live behind a horizontal swipe (`SwipeRow`), not in always-visible
+buttons: pin on the left, trash on the right, restore/delete in the trash.
+Every swipe action also has a keyboard route — `Ctrl+D` trashes the open note,
+`Ctrl+W` closes it — because a gesture-only action is unreachable without a
+pointer.
+
+Motion is short and eased-out: nothing runs longer than 220ms, and the whole
+sheet collapses under `prefers-reduced-motion`.
 
 ## Regressions to never reintroduce
 

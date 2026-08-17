@@ -19,16 +19,7 @@ import { formatBytes, titleFromContent, uid } from '../lib/format'
 import { idbDel, idbGet, idbGetAll, idbSet, kvGet, kvSet } from '../lib/idb'
 import { kindFromName, languageLabel } from '../lib/languages'
 import { bootNative, isNative } from '../lib/native'
-import type {
-  Category,
-  LoadProgress,
-  NativeFile,
-  Note,
-  NoteKind,
-  Screen,
-  Settings,
-  Toast,
-} from '../lib/types'
+import type { LoadProgress, NativeFile, Note, NoteKind, Screen, Settings, Toast } from '../lib/types'
 
 export { bootNative, isNative }
 
@@ -48,14 +39,9 @@ type State = {
   toasts: Toast[]
   progress: LoadProgress | null
   confirm: ConfirmDialog | null
-  textPrompt: TextPrompt | null
-  categories: Category[]
-  filter: string
   trash: Note[]
   trashContents: Record<string, string>
 }
-
-export type TextPrompt = { title: string; label: string; value: string }
 
 const defaultSettings: Settings = { theme: 'dark', wrap: true, fontSize: 15 }
 
@@ -73,9 +59,6 @@ let state: State = {
   toasts: [],
   progress: null,
   confirm: null,
-  textPrompt: null,
-  categories: [],
-  filter: 'all',
   trash: [],
   trashContents: {},
 }
@@ -177,20 +160,6 @@ export function answerConfirm(ok: boolean) {
   set({ confirm: null })
 }
 
-let textResolve: ((value: string | null) => void) | null = null
-
-export function askText(title: string, label: string, value = ''): Promise<string | null> {
-  return new Promise((resolve) => {
-    textResolve = resolve
-    set({ textPrompt: { title, label, value } })
-  })
-}
-
-export function answerText(value: string | null) {
-  textResolve?.(value)
-  textResolve = null
-  set({ textPrompt: null })
-}
 
 /* --------------------------------------------------------- persistence -- */
 
@@ -210,13 +179,11 @@ async function persist() {
   pending.clear()
 
   await kvSet('settings', state.settings)
-  await kvSet('categories', state.categories)
   await kvSet('trash', { notes: state.trash, contents: state.trashContents })
   await kvSet('session', {
     openTabs: state.openTabs,
     activeId: state.activeId,
     sidebar: state.sidebar,
-    filter: state.filter,
   })
 
   for (const id of ids) {
@@ -293,13 +260,7 @@ export function init(): Promise<void> {
 
 async function boot() {
   const savedSettings = await kvGet<Partial<Settings>>('settings')
-  const session = await kvGet<{
-    openTabs: string[]
-    activeId: string | null
-    sidebar: boolean
-    filter: string
-  }>('session')
-  const savedCategories = await kvGet<Category[]>('categories')
+  const session = await kvGet<{ openTabs: string[]; activeId: string | null; sidebar: boolean }>('session')
   const savedTrash = await kvGet<{ notes: Note[]; contents: Record<string, string> }>('trash')
   const stored = await idbGetAll<Note & { dirtyUi?: boolean }>('notes')
 
@@ -330,8 +291,6 @@ async function boot() {
     openTabs,
     activeId,
     sidebar: session?.sidebar ?? true,
-    filter: session?.filter ?? 'all',
-    categories: savedCategories ?? [],
     trash: savedTrash?.notes ?? [],
     trashContents: savedTrash?.contents ?? {},
   })
@@ -343,61 +302,13 @@ export function setScreen(screen: Screen) {
   set({ screen })
 }
 
-export function setFilter(filter: string) {
-  set({ filter, screen: 'library' })
-  schedulePersist()
-}
+/* ------------------------------------------------------------------ pin -- */
 
-/* ----------------------------------------------------------- categories -- */
-
-export function addCategory(name: string): string | null {
-  const trimmed = name.trim()
-  if (!trimmed) return null
-
-  const existing = state.categories.find((c) => c.name.toLowerCase() === trimmed.toLowerCase())
-  if (existing) {
-    notify('That category already exists', 'warn')
-    return existing.id
-  }
-
-  const id = uid()
-  set({ categories: [...state.categories, { id, name: trimmed }] })
-  schedulePersist()
-  return id
-}
-
-export function renameCategory(id: string, name: string) {
-  const trimmed = name.trim()
-  if (!trimmed) return
-  set({ categories: state.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c)) })
-  schedulePersist()
-}
-
-export function removeCategory(id: string) {
-  // Detach the category from every note rather than leaving dangling ids that
-  // would quietly hide notes from a filter that no longer exists.
-  const notes = state.notes.map((n) =>
-    n.categoryIds.includes(id) ? { ...n, categoryIds: n.categoryIds.filter((c) => c !== id) } : n,
-  )
-  set({
-    categories: state.categories.filter((c) => c.id !== id),
-    notes,
-    filter: state.filter === id ? 'all' : state.filter,
-  })
-  for (const n of notes) pending.add(n.id)
-  schedulePersist()
-}
-
-export function toggleNoteCategory(noteId: string, categoryId: string) {
-  const note = state.notes.find((n) => n.id === noteId)
+export function pinNote(id: string) {
+  const note = state.notes.find((n) => n.id === id)
   if (!note) return
-  const categoryIds = note.categoryIds.includes(categoryId)
-    ? note.categoryIds.filter((c) => c !== categoryId)
-    : [...note.categoryIds, categoryId]
-  set({
-    notes: state.notes.map((n) => (n.id === noteId ? { ...n, categoryIds, updatedAt: Date.now() } : n)),
-  })
-  schedulePersist(noteId)
+  set({ notes: state.notes.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n)) })
+  schedulePersist(id)
 }
 
 /* ---------------------------------------------------------------- trash -- */
@@ -570,7 +481,6 @@ export function newNote(kind: NoteKind = 'markdown') {
     fromDisk: false,
     dirty: true,
     size: 0,
-    categoryIds: [],
     pinned: false,
     locked: false,
     encoding: 'utf-8',
@@ -625,7 +535,6 @@ function diskNote(id: string, name: string, path: string | null, size: number, c
     fromDisk: true,
     dirty: false,
     size,
-    categoryIds: [],
     pinned: false,
     locked: false,
     encoding,

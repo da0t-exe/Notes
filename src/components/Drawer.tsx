@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { IconChevron } from '../icons'
 import type { Screen } from '../lib/types'
-import { setFilter, setScreen, useStore } from '../store'
+import { setScreen, useStore } from '../store'
 
 const ITEMS: { label: string; screen: Screen }[] = [
   { label: 'Notes', screen: 'library' },
-  { label: 'Categories', screen: 'categories' },
   { label: 'Trash', screen: 'trash' },
 ]
 
@@ -51,8 +50,7 @@ export function Drawer({ open, onClose }: { open: boolean; onClose: () => void }
             className="drawer-item"
             type="button"
             onClick={() => {
-              if (item.screen === 'library') setFilter('all')
-              else setScreen(item.screen)
+              setScreen(item.screen)
               onClose()
             }}
           >

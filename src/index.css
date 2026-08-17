@@ -140,8 +140,8 @@ button {
   background: #121318;
   pointer-events: none;
   opacity: 0;
-  transform: translateX(-16px);
-  transition: opacity 0.1s ease, transform 0.1s ease;
+  transform: translateX(-100%);
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .app.menu-open .titlebar::before {
@@ -767,7 +767,7 @@ button {
   cursor: grab;
   background: transparent;
   -webkit-user-drag: none;
-  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
@@ -839,7 +839,7 @@ button {
   z-index: 20;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.1s ease;
+  transition: opacity 0.2s ease;
 }
 
 .drawer-back.open {
@@ -859,8 +859,11 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  transform: translateX(-16px);
-  transition: transform 0.1s ease;
+  /* A real slide off the left edge rather than the 16px nudge v0.3 used.
+     Short and eased-out so it reads as fast, not as an animation. */
+  transform: translateX(-100%);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .drawer-back.open .drawer {
@@ -910,85 +913,6 @@ button {
   max-height: 4.4em;
 }
 
-.tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  padding: 0 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  border-bottom: 1px solid var(--outline);
-  flex: 0 0 auto;
-}
-
-.tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px 8px 14px;
-  max-width: 220px;
-  border-radius: 10px 10px 0 0;
-  border: 1px solid transparent;
-  border-bottom: none;
-  color: var(--muted);
-  font-size: 13px;
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.tab:hover {
-  color: var(--on-bg);
-  background: var(--surface);
-}
-
-.tab.active {
-  color: var(--on-bg);
-  background: var(--surface);
-  border-color: var(--outline);
-}
-
-.tab-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* An unsaved tab grows a dot before its name, so the state is visible even
-   when the strip is scrolled and the status bar is off screen. */
-.tab.dirty .tab-name::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  vertical-align: middle;
-}
-
-.tab-close {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  color: var(--faint);
-  flex: 0 0 auto;
-}
-
-.tab:hover .tab-close,
-.tab.active .tab-close {
-  color: var(--muted);
-}
-
-.tab-close:hover {
-  color: var(--on-bg);
-  background: var(--outline);
-}
 
 .meta-bar {
   display: flex;
@@ -1965,5 +1889,87 @@ button {
 @media (max-width: 860px) {
   .note-title {
     font-size: 24px;
+  }
+}
+
+/* ------------------------------------------------------------- motion -- */
+/* Short and eased-out. These should register as responsiveness, not as
+   animation: nothing here runs longer than 220ms. */
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.screen-in {
+  animation: screen-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toasts .toast,
+.progress {
+  animation: rise 0.18s ease-out both;
+}
+
+.modal-back {
+  animation: fade 0.14s ease both;
+}
+
+.modal {
+  animation: pop 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.note-card {
+  transition: background 0.15s ease;
+}
+
+.swipe-action {
+  transition: opacity 0.16s ease;
+}
+
+.card-marks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.card-marks svg {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.card-marks .dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
