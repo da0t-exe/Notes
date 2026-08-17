@@ -250,11 +250,17 @@ function Shell() {
             )}
           </section>
 
-          {!sidebar ? (
-            <button className="rail-open" type="button" title="Show notes (Ctrl+B)" onClick={toggleSidebar}>
-              <IconPanel />
-            </button>
-          ) : null}
+          {/* One button, one position, both directions. Keeping it put means
+              the panel is what moves, not the control that moves it. */}
+          <button
+            className={`rail-open ${sidebar ? 'on' : ''}`}
+            type="button"
+            title={sidebar ? 'Hide notes (Ctrl+B)' : 'Show notes (Ctrl+B)'}
+            aria-expanded={sidebar}
+            onClick={toggleSidebar}
+          >
+            <IconPanel />
+          </button>
         </div>
       )}
 

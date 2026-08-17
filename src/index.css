@@ -674,9 +674,21 @@ button {
   height: 40px;
   border-radius: 12px;
   background: var(--fg);
+  color: var(--on-bg);
   display: grid;
   place-items: center;
   z-index: 8;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.rail-open:hover {
+  background: var(--on-bg);
+  color: var(--bg);
+}
+
+/* Open state reads as pressed, the same way the header toggle used to. */
+.rail-open.on {
+  background: var(--surface);
 }
 
 /* Cleared above the status bar when one is present, keeping the same 16px it
