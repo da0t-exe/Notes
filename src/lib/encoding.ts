@@ -52,7 +52,9 @@ export function decodeBytes(buffer: ArrayBuffer, encoding: string): string {
   return new TextDecoder(encoding).decode(buffer)
 }
 
-export function encodeForSave(text: string, encoding: string): Uint8Array {
+// Pinned to Uint8Array<ArrayBuffer> rather than the default ArrayBufferLike:
+// BlobPart rejects a possibly-shared buffer, and every caller builds a Blob.
+export function encodeForSave(text: string, encoding: string): Uint8Array<ArrayBuffer> {
   if (encoding === 'utf-16le' || encoding === 'utf-16be') {
     const little = encoding === 'utf-16le'
     const out = new Uint8Array(2 + text.length * 2)
