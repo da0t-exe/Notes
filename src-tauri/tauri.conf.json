@@ -48,7 +48,8 @@
         "displayLanguageSelector": false,
         "compression": "lzma",
         "headerImage": "installer/header.bmp",
-        "sidebarImage": "installer/sidebar.bmp"
+        "sidebarImage": "installer/sidebar.bmp",
+        "installerHooks": "installer/hooks.nsh"
       }
     },
     "publisher": "da0t-exe",

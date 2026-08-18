@@ -8,7 +8,7 @@ use std::time::UNIX_EPOCH;
 
 use encoding_rs::{Encoding, UTF_16BE, UTF_16LE, UTF_8, WINDOWS_1252};
 use serde::Serialize;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 
 /// Refuse to load anything past this before allocating for it. The v0.3 build
@@ -48,7 +48,8 @@ fn canonical(path: &Path) -> PathBuf {
   fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-#[derive(Serialize)]
+// Clone because the single-instance hook emits it to the running window.
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct OpenedFile {
   path: String,
@@ -294,18 +295,75 @@ async fn save_file_as(
   }))
 }
 
+/// The file Windows handed us on the command line, if any.
+///
+/// Only the OS ever supplies this — the webview cannot ask for a path. That is
+/// deliberate: a command that read any path on request would hand an injected
+/// script the whole filesystem, which is the same hole `write_file` guards
+/// against on the way out.
+fn file_from_args<I: IntoIterator<Item = String>>(args: I) -> Option<PathBuf> {
+  args
+    .into_iter()
+    .skip(1)
+    .find(|a| !a.starts_with('-'))
+    .map(PathBuf::from)
+    .filter(|p| p.is_file())
+}
+
+/// Reads a launch argument and registers it as writable, so saving works on a
+/// file the user opened through Explorer rather than through our own dialog.
+fn adopt(path: &Path, session: &Session) -> Option<OpenedFile> {
+  let opened = read_opened(path).ok()?;
+  session.allow(path);
+  Some(opened)
+}
+
+/// Holds the file the app was started with until the frontend asks for it.
+#[derive(Default)]
+struct Launch(Mutex<Option<OpenedFile>>);
+
+#[tauri::command]
+fn take_launch_file(launch: tauri::State<'_, Launch>) -> Option<OpenedFile> {
+  launch.0.lock().ok()?.take()
+}
+
 fn main() {
   // No native menu bar: the window runs with `decorations: false` and a custom
   // titlebar, and Win32 attaches menus to the frame — so the v0.3 File/Edit/View
   // menu was built, wired to an event channel, and never rendered. Shortcuts in
   // App.tsx are the real surface.
   tauri::Builder::default()
+    // A second launch — "Open with Notes" on another file — hands its argument
+    // to the running window instead of opening a rival one.
+    .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+      if let Some(win) = app.get_webview_window("main") {
+        let _ = win.set_focus();
+        if let Some(path) = file_from_args(argv) {
+          if let Some(opened) = adopt(&path, &app.state::<Session>()) {
+            let _ = win.emit("open-file", opened);
+          }
+        }
+      }
+    }))
     .plugin(tauri_plugin_dialog::init())
     .setup(|app| {
-      app.manage(Session::default());
+      let session = Session::default();
+      let launch = Launch::default();
+      if let Some(path) = file_from_args(std::env::args()) {
+        if let Ok(mut slot) = launch.0.lock() {
+          *slot = adopt(&path, &session);
+        }
+      }
+      app.manage(session);
+      app.manage(launch);
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![open_files, write_file, save_file_as])
+    .invoke_handler(tauri::generate_handler![
+      open_files,
+      write_file,
+      save_file_as,
+      take_launch_file
+    ])
     .run(tauri::generate_context!())
     .expect("failed to start Notes");
 }

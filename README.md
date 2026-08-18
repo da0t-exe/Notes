@@ -93,8 +93,8 @@ npm run app
 | `npm run check` | Type check, lint and tests — the gate for every commit |
 | `npm run dist` | Build the Windows installer |
 
-`src/lib/` holds the pure logic — encoding detection, list parsing, crypto,
-Markdown preview — with no React and no DOM writes, and a test beside every
+`src/lib/` holds the pure logic — encoding detection, list parsing, list
+serialisation, Markdown preview — with no React and no DOM writes, and a test beside every
 module. Everything else builds on top of it.
 
 ## Status
@@ -102,7 +102,8 @@ module. Everything else builds on top of it.
 v0.4 is a rebuild. Working today: opening and editing any text file, saving,
 search, live Markdown, checklists, pinning, trash and persistence.
 
-Not yet carried over from v0.3: per-note password locking.
+Per-note password locking is not carried over from v0.3, and will not be:
+it protected notes that sat unencrypted on disk either way.
 
 ## History
 

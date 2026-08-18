@@ -537,7 +537,6 @@ export function newNote(kind: NoteKind = 'markdown') {
     dirty: true,
     size: starter.length,
     pinned: false,
-    locked: false,
     encoding: 'utf-8',
     lineEnding: 'LF',
     fileName: kind === 'markdown' ? 'untitled.md' : kind === 'text' ? 'untitled.txt' : null,
@@ -561,6 +560,21 @@ function adopt(note: Note, text: string) {
   })
   openTab(note.id)
   schedulePersist(note.id)
+}
+
+/**
+ * Opens a file handed over by the OS — the launch argument, or a later "Open
+ * with" while we are already running. The path never crosses the bridge: Rust
+ * reads the file and passes the content, so the webview cannot ask for one.
+ */
+export async function adoptNativeFile(file: NativeFile) {
+  await ingestNative(file)
+}
+
+/** Called once at startup, after boot(), for the file Explorer launched us with. */
+export async function openLaunchFile() {
+  const file = await window.notesNative?.takeLaunchFile()
+  if (file) await ingestNative(file)
 }
 
 export async function openFromDisk(incoming?: Array<FileSystemFileHandle | File>) {
@@ -591,7 +605,6 @@ function diskNote(id: string, name: string, path: string | null, size: number, c
     dirty: false,
     size,
     pinned: false,
-    locked: false,
     encoding,
     lineEnding,
     fileName: name,

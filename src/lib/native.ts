@@ -13,6 +13,10 @@ export type NativeAPI = {
   maximize: () => void
   close: () => void
   onCloseRequested: (handler: () => Promise<boolean>) => Promise<() => void>
+  /** The file Explorer launched us with, consumed once. */
+  takeLaunchFile: () => Promise<NativeFile | null>
+  /** Fires when a second launch hands its file to this window. */
+  onOpenFile: (handler: (file: NativeFile) => void) => Promise<() => void>
 }
 
 declare global {
@@ -36,6 +40,7 @@ export async function bootNative(): Promise<void> {
 
   const { invoke } = await import('@tauri-apps/api/core')
   const { getCurrentWindow } = await import('@tauri-apps/api/window')
+  const { listen } = await import('@tauri-apps/api/event')
   const win = getCurrentWindow()
 
   window.notesNative = {
@@ -45,6 +50,8 @@ export async function bootNative(): Promise<void> {
       invoke<{ path: string; name: string }>('write_file', { filePath, text, encoding }),
     saveFileAs: (name, text, encoding) =>
       invoke<{ path: string; name: string } | null>('save_file_as', { name, text, encoding }),
+    takeLaunchFile: () => invoke<NativeFile | null>('take_launch_file'),
+    onOpenFile: (handler) => listen<NativeFile>('open-file', (e) => handler(e.payload)),
     minimize: () => void win.minimize(),
     maximize: () => void win.toggleMaximize(),
     close: () => void win.close(),

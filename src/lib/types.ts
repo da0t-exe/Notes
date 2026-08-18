@@ -22,10 +22,8 @@ export type Note = {
 
   /* stored notes only */
   pinned: boolean
-  locked: boolean
   listType?: ListType
   images?: string[]
-  ciphertext?: string
 
   /* disk files only */
   encoding: string

@@ -15,6 +15,7 @@ import { SettingsScreen } from './screens/Settings'
 import { TrashScreen } from './screens/Trash'
 import {
   activateTab,
+  adoptNativeFile,
   answerConfirm,
   closeTab,
   confirmQuit,
@@ -24,6 +25,7 @@ import {
   init,
   newNote,
   openFromDisk,
+  openLaunchFile,
   pinNote,
   saveActive,
   saveActiveAs,
@@ -43,8 +45,10 @@ export default function App() {
   const ready = useStore((s) => s.ready)
 
   useEffect(() => {
-    void init()
+    void init().then(openLaunchFile)
   }, [])
+
+  useOpenWith()
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -101,6 +105,18 @@ function useShortcuts() {
 
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+}
+
+/** A second "Open with Notes" lands here instead of opening another window. */
+function useOpenWith() {
+  useEffect(() => {
+    if (!isNative() || !window.notesNative) return
+    let stop: (() => void) | undefined
+    void window.notesNative.onOpenFile((file) => void adoptNativeFile(file)).then((fn) => {
+      stop = fn
+    })
+    return () => stop?.()
   }, [])
 }
 
