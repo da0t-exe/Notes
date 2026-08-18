@@ -768,6 +768,13 @@ button {
   color: var(--white);
 }
 
+/* Closing a file is not destructive — the file stays on disk — so it reads as
+   neutral rather than borrowing the delete red. */
+.swipe-action.close {
+  background: var(--surface);
+  color: var(--on-bg);
+}
+
 .swipe-action.pin,
 .swipe-action.restore {
   background: var(--on-bg);
@@ -1275,6 +1282,12 @@ button {
   flex-direction: column;
   gap: 3px;
   margin-bottom: 40px;
+}
+
+/* Rows are links in the About group; the underline reads as a defect next to
+   the button rows beside them. */
+a.option {
+  text-decoration: none;
 }
 
 .option {

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-
 import { Drawer } from './components/Drawer'
 import { SwipeRow } from './components/SwipeRow'
 import { TitleBar } from './components/TitleBar'
@@ -17,7 +16,7 @@ import {
   activateTab,
   adoptNativeFile,
   answerConfirm,
-  closeTab,
+  closeFile,
   confirmQuit,
   emptyTrash,
   findInActive,
@@ -40,16 +39,12 @@ import {
   useCursor,
   useStore,
 } from './store'
-
 export default function App() {
   const ready = useStore((s) => s.ready)
-
   useEffect(() => {
     void init().then(openLaunchFile)
   }, [])
-
   useOpenWith()
-
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const sync = () => {
@@ -58,10 +53,8 @@ export default function App() {
     mq.addEventListener('change', sync)
     return () => mq.removeEventListener('change', sync)
   }, [])
-
   useShortcuts()
   useCloseGuard()
-
   if (!ready) {
     return (
       <div className="app">
@@ -72,7 +65,6 @@ export default function App() {
   }
   return <Shell />
 }
-
 function useShortcuts() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -82,14 +74,13 @@ function useShortcuts() {
         e.preventDefault()
         fn()
       }
-
       if (meta && key === 'n') hit(() => newNote(e.shiftKey ? 'checklist' : 'markdown'))
       else if (meta && key === 'o') hit(() => void openFromDisk())
       else if (meta && e.shiftKey && key === 's') hit(() => void saveActiveAs())
       else if (meta && key === 's') hit(() => void saveActive())
       else if (meta && key === 'w') {
         const id = getState().activeId
-        if (id) hit(() => void closeTab(id))
+        if (id) hit(() => void closeFile(id))
       } else if (meta && key === 'd') {
         const id = getState().activeId
         if (id) hit(() => void trashNote(id))
@@ -102,12 +93,10 @@ function useShortcuts() {
         hit(() => setFontSize(Math.max(12, getState().settings.fontSize - 1)))
       } else if (meta && e.key === '0') hit(() => setFontSize(15))
     }
-
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 }
-
 /** A second "Open with Notes" lands here instead of opening another window. */
 function useOpenWith() {
   useEffect(() => {
@@ -119,7 +108,6 @@ function useOpenWith() {
     return () => stop?.()
   }, [])
 }
-
 /** Holds the window open when anything is unsaved. v0.3 had no such hook. */
 function useCloseGuard() {
   useEffect(() => {
@@ -131,7 +119,6 @@ function useCloseGuard() {
     return () => stop?.()
   }, [])
 }
-
 function Shell() {
   const screen = useStore((s) => s.screen)
   const notes = useStore((s) => s.notes)
@@ -139,14 +126,11 @@ function Shell() {
   const sidebar = useStore((s) => s.sidebar)
   const contents = useStore((s) => s.contents)
   const trash = useStore((s) => s.trash)
-
   const [drawer, setDrawer] = useState(false)
   const [query, setQuery] = useState('')
   const [drop, setDrop] = useState(false)
-
   const active = notes.find((n) => n.id === activeId) ?? null
   const inLibrary = screen === 'library'
-
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     const list = q
@@ -159,7 +143,6 @@ function Shell() {
       return b.updatedAt - a.updatedAt
     })
   }, [notes, contents, query])
-
   return (
     <div
       className={`app ${isNative() ? 'native' : ''} ${drop ? 'drop' : ''} ${drawer ? 'menu-open' : ''}`}
@@ -176,7 +159,6 @@ function Shell() {
       }}
     >
       <TitleBar />
-
       <header className="header">
         {inLibrary ? (
           <button className="icon-btn" type="button" title="Menu" onClick={() => setDrawer(true)}>
@@ -192,20 +174,16 @@ function Shell() {
             <IconBack />
           </button>
         )}
-
         <h1 className="headline">
           {inLibrary ? (active?.title ?? 'Notes') : screen === 'trash' ? 'Trash' : 'Settings'}
         </h1>
-
         {screen === 'trash' && trash.length > 0 ? (
           <button className="icon-btn" type="button" title="Empty trash" onClick={() => void emptyTrash()}>
             <IconTrash />
           </button>
         ) : null}
       </header>
-
       <Drawer open={drawer} onClose={() => setDrawer(false)} />
-
       {screen === 'trash' ? (
         <div className="screen-in">
           <TrashScreen />
@@ -239,9 +217,11 @@ function Shell() {
                       tone: 'pin',
                       onAct: () => pinNote(note.id),
                     }}
-                    {...(note.fromDisk
-                      ? {}
-                      : { right: { label: 'Move to trash', tone: 'del' as const, onAct: () => void trashNote(note.id) } })}
+                    right={
+                      note.fromDisk
+                        ? { label: 'Close', tone: 'close', onAct: () => void closeFile(note.id) }
+                        : { label: 'Move to trash', tone: 'del', onAct: () => void trashNote(note.id) }
+                    }
                   >
                     <NoteCard note={note} active={note.id === activeId} />
                   </SwipeRow>
@@ -257,7 +237,6 @@ function Shell() {
               <IconPlus />
             </button>
           </aside>
-
           <section className="editor-col">
             {active ? (
               <>
@@ -272,7 +251,6 @@ function Shell() {
               <p className="empty-hint">Select a note, or press Ctrl+N to write</p>
             )}
           </section>
-
           {/* One button, one position, both directions. Keeping it put means
               the panel is what moves, not the control that moves it. */}
           <button
@@ -286,15 +264,12 @@ function Shell() {
           </button>
         </div>
       )}
-
       <Overlays />
     </div>
   )
 }
-
 function NoteCard({ note, active }: { note: Note; active: boolean }) {
   const content = useStore((s) => s.contents[note.id] ?? '')
-
   return (
     <div
       className={`note-card ${active ? 'active' : ''}`}
@@ -326,11 +301,9 @@ function NoteCard({ note, active }: { note: Note; active: boolean }) {
     </div>
   )
 }
-
 function ChecklistPreview({ note, content }: { note: Note; content: string }) {
   const listType = note.listType ?? 'checklist'
   const items = parseList(content, listType).slice(0, 6)
-
   return (
     <div className="checks">
       {items.map((item, i) => (
@@ -348,11 +321,9 @@ function ChecklistPreview({ note, content }: { note: Note; content: string }) {
     </div>
   )
 }
-
 function StatusBar({ note }: { note: Note }) {
   const cursor = useCursor()
   const wrap = useStore((s) => s.settings.wrap)
-
   return (
     <div className="status">
       <span>
@@ -377,18 +348,16 @@ function StatusBar({ note }: { note: Note }) {
       <button type="button" onClick={() => void saveActive()}>
         Save
       </button>
-      <button className="icon-btn" type="button" title="Close (Ctrl+W)" onClick={() => void closeTab(note.id)}>
+      <button className="icon-btn" type="button" title="Close (Ctrl+W)" onClick={() => void closeFile(note.id)}>
         <IconClose />
       </button>
     </div>
   )
 }
-
 function Overlays() {
   const toasts = useStore((s) => s.toasts)
   const progress = useStore((s) => s.progress)
   const confirm = useStore((s) => s.confirm)
-
   return (
     <>
       {progress ? (
@@ -396,7 +365,6 @@ function Overlays() {
           {progress.name} · {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
         </div>
       ) : null}
-
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.tone}`}>
@@ -404,7 +372,6 @@ function Overlays() {
           </div>
         ))}
       </div>
-
       {confirm ? (
         <div className="modal-back">
           <div className="modal" role="dialog" aria-modal="true" aria-label={confirm.title}>

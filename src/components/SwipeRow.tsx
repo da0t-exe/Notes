@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import { IconPin, IconRestore, IconTrash } from '../icons'
+import { IconClose, IconPin, IconRestore, IconTrash } from '../icons'
 import { clampDrag, isDrag, REVEAL, snapTarget } from './swipe'
 
 export type SwipeAction = {
   label: string
-  tone: 'del' | 'pin' | 'restore'
+  tone: 'del' | 'pin' | 'restore' | 'close'
   onAct: () => void
 }
 
@@ -26,6 +26,7 @@ function capture(el: Element, pointerId: number, grab: boolean) {
 function icon(tone: SwipeAction['tone']) {
   if (tone === 'pin') return <IconPin />
   if (tone === 'restore') return <IconRestore />
+  if (tone === 'close') return <IconClose />
   return <IconTrash />
 }
 

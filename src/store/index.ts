@@ -509,6 +509,38 @@ export async function closeTab(id: string): Promise<boolean> {
   return true
 }
 
+/**
+ * Drops a file opened from disk out of the session. The file itself is left
+ * alone — this is the counterpart to trashNote, which refuses a disk file
+ * precisely because closing and deleting are not the same act.
+ */
+export async function closeFile(id: string): Promise<boolean> {
+  const note = state.notes.find((n) => n.id === id)
+  if (!note) return true
+  if (!note.fromDisk) return closeTab(id)
+
+  if (note.dirty) {
+    const ok = await ask('Unsaved changes', `“${note.title}” has unsaved edits. Close it anyway?`)
+    if (!ok) return false
+  }
+
+  unregisterView(id)
+  handles.delete(id)
+  const openTabs = state.openTabs.filter((t) => t !== id)
+  const { [id]: _text, ...contents } = state.contents
+  const { [id]: _original, ...originals } = state.originals
+  set({
+    notes: state.notes.filter((n) => n.id !== id),
+    contents,
+    originals,
+    openTabs,
+    activeId: state.activeId === id ? (openTabs[openTabs.length - 1] ?? null) : state.activeId,
+  })
+  // The id no longer resolves to a note, so the flush drops its stored rows.
+  schedulePersist(id)
+  return true
+}
+
 export function unsavedCount(): number {
   return state.notes.filter((n) => n.dirty).length
 }
