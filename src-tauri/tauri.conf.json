@@ -46,7 +46,9 @@
           "English"
         ],
         "displayLanguageSelector": false,
-        "compression": "lzma"
+        "compression": "lzma",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp"
       }
     },
     "publisher": "da0t-exe",
